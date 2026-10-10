@@ -1,6 +1,7 @@
 /**
- * This program turns auth and validation failures into HTTP problem
- * details so register and login return stable status codes and bodies.
+ * This program turns auth, listing, and validation failures into HTTP
+ * problem details so register, login, and LST-01 return stable status
+ * codes and bodies.
  *
  * File:   GlobalExceptionHandler.java
  * Course: AUCSC 325
@@ -65,6 +66,38 @@ public class GlobalExceptionHandler {
     public ProblemDetail handleRoleNotSelfAssignable(
             RoleNotSelfAssignableException exception) {
         return problem(HttpStatus.BAD_REQUEST, "Invalid role",
+                exception.getMessage());
+    }
+
+    /**
+     * handleListingAccessDenied - This function maps a listing
+     * privilege or ownership failure to HTTP 403.
+     *
+     * Parameters:
+     * exception - The denied listing write
+     *
+     * Return - A forbidden problem detail
+     */
+    @ExceptionHandler(ListingAccessDeniedException.class)
+    public ProblemDetail handleListingAccessDenied(
+            ListingAccessDeniedException exception) {
+        return problem(HttpStatus.FORBIDDEN, "Listing access denied",
+                exception.getMessage());
+    }
+
+    /**
+     * handleListingNotFound - This function maps a missing listing id
+     * to HTTP 404.
+     *
+     * Parameters:
+     * exception - The missing-listing error
+     *
+     * Return - A not-found problem detail
+     */
+    @ExceptionHandler(ListingNotFoundException.class)
+    public ProblemDetail handleListingNotFound(
+            ListingNotFoundException exception) {
+        return problem(HttpStatus.NOT_FOUND, "Listing not found",
                 exception.getMessage());
     }
 

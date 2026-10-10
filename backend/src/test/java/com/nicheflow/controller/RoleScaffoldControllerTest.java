@@ -1,10 +1,12 @@
 /**
- * This program proves AUTH-02 role gates on the temporary ping
- * endpoints: a CUSTOMER token is forbidden, and the matching role
- * is allowed. Delete this file with the ping controllers.
+ * This program proves AUTH-02 on the temporary admin ping still
+ * pending ADM-01: a CUSTOMER token is forbidden and an ADMIN token
+ * is allowed. Supplier-role enforcement is now proven by
+ * /api/listings. Delete this file with AdminPingController.
  *
  * File:   RoleScaffoldControllerTest.java
- * Course: AUCSC 325
+ * Course: AUCSC 325 
+ *    
  */
 package com.nicheflow.controller;
 
@@ -26,7 +28,7 @@ import com.nicheflow.model.Role;
 import com.nicheflow.security.AuthenticatedUser;
 import com.nicheflow.service.JwtService;
 
-@WebMvcTest({ AdminPingController.class, SupplierPingController.class })
+@WebMvcTest(AdminPingController.class)
 @Import(SecurityConfig.class)
 class RoleScaffoldControllerTest {
 
@@ -47,16 +49,6 @@ class RoleScaffoldControllerTest {
     }
 
     /**
-     * customerIsForbiddenOnSupplierPing - This function sends a
-     * CUSTOMER token to GET /api/supplier/ping and expects 403.
-     */
-    @Test
-    void customerIsForbiddenOnSupplierPing() throws Exception {
-        getWithRole("/api/supplier/ping", "customer-token", Role.CUSTOMER)
-                .andExpect(status().isForbidden());
-    }
-
-    /**
      * adminIsAllowedOnAdminPing - This function sends an ADMIN token
      * to GET /api/admin/ping and expects 200.
      */
@@ -65,29 +57,6 @@ class RoleScaffoldControllerTest {
         getWithRole("/api/admin/ping", "admin-token", Role.ADMIN)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.scope").value("admin"));
-    }
-
-    /**
-     * supplierIsAllowedOnSupplierPing - This function sends a
-     * SUPPLIER token to GET /api/supplier/ping and expects 200.
-     */
-    @Test
-    void supplierIsAllowedOnSupplierPing() throws Exception {
-        getWithRole("/api/supplier/ping", "supplier-token", Role.SUPPLIER)
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.scope").value("supplier"));
-    }
-
-    /**
-     * adminIsAllowedOnSupplierPing - This function sends an ADMIN
-     * token to GET /api/supplier/ping and expects 200 because the
-     * supplier gate also accepts ROLE_ADMIN.
-     */
-    @Test
-    void adminIsAllowedOnSupplierPing() throws Exception {
-        getWithRole("/api/supplier/ping", "admin-token", Role.ADMIN)
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.scope").value("supplier"));
     }
 
     /**

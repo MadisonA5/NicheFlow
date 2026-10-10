@@ -1,10 +1,12 @@
 /**
- * This program is temporary AUTH-02 scaffolding: GET /api/admin/ping
- * proves ROLE_ADMIN is enforced. Remove this file when the real
- * ADM-01 admin console lands in Week 6.
+ * This program is temporary AUTH-02 scaffolding still pending
+ * ADM-01: GET /api/admin/ping proves ROLE_ADMIN is enforced.
+ * Supplier-role enforcement is now proven by /api/listings.
+ * Remove this file when the real admin console lands in Week 6.
  *
  * File:   AdminPingController.java
  * Course: AUCSC 325
+ *
  */
 package com.nicheflow.controller;
 
