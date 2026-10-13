@@ -1,34 +1,7 @@
-import './App.css'
-
-const listings = [
-  {
-    id: 1,
-    title: 'Sunny garden studio',
-    category: 'Workspace',
-    location: 'Calgary, AB',
-    price: 38,
-    icon: '🌿',
-    color: 'sage',
-  },
-  {
-    id: 2,
-    title: 'Weekend bike rental',
-    category: 'Outdoor',
-    location: 'Calgary, AB',
-    price: 22,
-    icon: '🚲',
-    color: 'peach',
-  },
-  {
-    id: 3,
-    title: 'Backyard dinner spot',
-    category: 'Events',
-    location: 'Airdrie, AB',
-    price: 55,
-    icon: '🍽️',
-    color: 'lavender',
-  },
-]
+import ListingCard from '../features/listings/ListingCard'
+import { listings } from '../features/listings/listings'
+import SearchBar from '../features/search/SearchBar'
+import '../styles/App.css'
 
 function App() {
   return (
@@ -58,19 +31,7 @@ function App() {
             neighborhood.
           </p>
 
-          <div className="search-panel" aria-label="Search listings">
-            <label className="search-field">
-              <span>What are you looking for?</span>
-              <input type="search" placeholder="A quiet workspace..." />
-            </label>
-            <label className="search-field location-field">
-              <span>Where?</span>
-              <input type="text" placeholder="City or neighborhood" />
-            </label>
-            <button className="search-button" type="button">
-              Search
-            </button>
-          </div>
+          <SearchBar />
         </section>
 
         <section className="listings-section" id="listings">
@@ -86,23 +47,7 @@ function App() {
 
           <div className="listing-grid">
             {listings.map((listing) => (
-              <article className="listing-card" key={listing.id}>
-                <div
-                  className={`listing-art ${listing.color}`}
-                  aria-hidden="true"
-                >
-                  <span>{listing.icon}</span>
-                  <span className="art-sparkle">✳</span>
-                </div>
-                <div className="listing-details">
-                  <p className="listing-category">{listing.category}</p>
-                  <h3>{listing.title}</h3>
-                  <p className="listing-location">{listing.location}</p>
-                  <p className="listing-price">
-                    <strong>${listing.price}</strong> / day
-                  </p>
-                </div>
-              </article>
+              <ListingCard key={listing.id} listing={listing} />
             ))}
           </div>
         </section>

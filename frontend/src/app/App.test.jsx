@@ -1,6 +1,6 @@
 import { render, screen, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
-import App from './App'
+import App from './App.jsx'
 
 describe('NicheFlow landing page', () => {
   it('shows the welcome message and labeled search fields', () => {
