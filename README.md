@@ -62,6 +62,18 @@ Full feature breakdown, prioritized with MoSCoW and mapped to requirement IDs fo
 
 This README is maintained as the living specification for the project and will be kept current through the term as requirements evolve.
 
+## Running the Frontend
+
+The React frontend lives in `frontend/`. From the repository root, run:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+This starts the frontend development server. Run `npm run build` from `frontend/` to create a production build. The frontend and Spring Boot backend run separately during development.
+
 ## Tech Stack
 
 Frontend --> React (JavaScript, HTML, CSS) 
