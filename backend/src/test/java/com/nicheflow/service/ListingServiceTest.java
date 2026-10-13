@@ -9,7 +9,11 @@
 package com.nicheflow.service;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
+
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -17,6 +21,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import org.mockito.Captor;
 import org.mockito.InjectMocks;
@@ -27,6 +33,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.nicheflow.TestListings;
 import com.nicheflow.TestUsers;
+import com.nicheflow.exception.InvalidSearchException;
 import com.nicheflow.exception.ListingAccessDeniedException;
 import com.nicheflow.exception.ListingNotFoundException;
 import com.nicheflow.model.Listing;
@@ -61,6 +68,9 @@ class ListingServiceTest {
 
     @Captor
     private ArgumentCaptor<Listing> savedListing;
+
+    @Captor
+    private ArgumentCaptor<Pageable> pageableCaptor;
 
     /**
      * createStoresTheJwtCallerAsTheSupplier - This function checks
@@ -184,5 +194,127 @@ class ListingServiceTest {
         assertThatThrownBy(() -> listingService.update(ownerCaller, 99L,
                 "Kayak", "SPORTS", PRICE))
                 .isInstanceOf(ListingNotFoundException.class);
+    }
+
+    /**
+     * searchTreatsBlankFiltersAsUnset - This function sends blank
+     * keyword and category so the query runs with both filters null.
+     */
+    @Test
+    void searchTreatsBlankFiltersAsUnset() {
+        given(listingRepository.searchActive(isNull(), isNull(), isNull(),
+                isNull(), any(Pageable.class)))
+                .willReturn(new PageImpl<>(List.of()));
+
+        assertThat(listingService.search("   ", "", null, null, null,
+                null).getContent()).isEmpty();
+
+        verify(listingRepository).searchActive(isNull(), isNull(),
+                isNull(), isNull(), any(Pageable.class));
+    }
+
+    /**
+     * searchEscapesLikeWildcardsInTheKeyword - This function proves
+     * a % in the keyword is escaped so it is not a LIKE wildcard.
+     */
+    @Test
+    void searchEscapesLikeWildcardsInTheKeyword() {
+        given(listingRepository.searchActive(eq("100\\%"), isNull(),
+                isNull(), isNull(), any(Pageable.class)))
+                .willReturn(new PageImpl<>(List.of()));
+
+        listingService.search("100%", null, null, null, null, null);
+
+        verify(listingRepository).searchActive(eq("100\\%"), isNull(),
+                isNull(), isNull(), any(Pageable.class));
+    }
+
+    /**
+     * searchPassesTrimmedExactCategory - This function trims the
+     * category and leaves its case alone for the exact match.
+     */
+    @Test
+    void searchPassesTrimmedExactCategory() {
+        given(listingRepository.searchActive(isNull(), eq("SPORTS"),
+                isNull(), isNull(), any(Pageable.class)))
+                .willReturn(new PageImpl<>(List.of()));
+
+        listingService.search(null, "  SPORTS  ", null, null, null,
+                null);
+
+        verify(listingRepository).searchActive(isNull(), eq("SPORTS"),
+                isNull(), isNull(), any(Pageable.class));
+    }
+
+    /**
+     * searchPassesInclusivePriceBounds - This function forwards
+     * minPrice and maxPrice unchanged to the query.
+     */
+    @Test
+    void searchPassesInclusivePriceBounds() {
+        BigDecimal minPrice = new BigDecimal("10.00");
+        BigDecimal maxPrice = new BigDecimal("50.00");
+        given(listingRepository.searchActive(isNull(), isNull(),
+                eq(minPrice), eq(maxPrice), any(Pageable.class)))
+                .willReturn(new PageImpl<>(List.of()));
+
+        listingService.search(null, null, minPrice, maxPrice, null,
+                null);
+
+        verify(listingRepository).searchActive(isNull(), isNull(),
+                eq(minPrice), eq(maxPrice), any(Pageable.class));
+    }
+
+    /**
+     * searchRejectsMinPriceGreaterThanMaxPrice - This function
+     * proves an inverted range is 400, not an empty page.
+     */
+    @Test
+    void searchRejectsMinPriceGreaterThanMaxPrice() {
+        assertThatThrownBy(() -> listingService.search(null, null,
+                new BigDecimal("50.00"), new BigDecimal("10.00"),
+                null, null))
+                .isInstanceOf(InvalidSearchException.class);
+
+        verify(listingRepository, never()).searchActive(any(), any(),
+                any(), any(), any());
+    }
+
+    /**
+     * searchUsesDefaultPageAndSize - This function proves omitted
+     * page and size become page 0 and size 20, sorted by id.
+     */
+    @Test
+    void searchUsesDefaultPageAndSize() {
+        given(listingRepository.searchActive(isNull(), isNull(),
+                isNull(), isNull(), any(Pageable.class)))
+                .willReturn(new PageImpl<>(List.of()));
+
+        listingService.search(null, null, null, null, null, null);
+
+        verify(listingRepository).searchActive(isNull(), isNull(),
+                isNull(), isNull(), pageableCaptor.capture());
+        assertThat(pageableCaptor.getValue().getPageNumber()).isZero();
+        assertThat(pageableCaptor.getValue().getPageSize()).isEqualTo(20);
+    }
+
+    /**
+     * searchCapsPageSizeAndClampsANegativePage - This function
+     * covers pagination boundaries: size 1000 becomes 100, page
+     * -1 becomes 0.
+     */
+    @Test
+    void searchCapsPageSizeAndClampsANegativePage() {
+        given(listingRepository.searchActive(isNull(), isNull(),
+                isNull(), isNull(), any(Pageable.class)))
+                .willReturn(new PageImpl<>(List.of()));
+
+        listingService.search(null, null, null, null, -1, 1000);
+
+        verify(listingRepository).searchActive(isNull(), isNull(),
+                isNull(), isNull(), pageableCaptor.capture());
+        assertThat(pageableCaptor.getValue().getPageNumber()).isZero();
+        assertThat(pageableCaptor.getValue().getPageSize())
+                .isEqualTo(100);
     }
 }

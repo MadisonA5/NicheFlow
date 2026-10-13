@@ -1,8 +1,7 @@
 /**
- * This program implements LST-01 create, edit, and deactivate. The
- * caller is always the AuthenticatedUser parsed from the JWT, the
- * same principal /api/auth/me uses. Ownership is that principal's
- * id compared to listings.supplier_id.
+ * This program implements LST-01 create, edit, and deactivate, plus
+ * LST-02 search of active listings. Write callers are the
+ * AuthenticatedUser from the JWT. Search is not owner-scoped.
  *
  * File:   ListingService.java
  * Course: AUCSC 325 
@@ -12,9 +11,14 @@ package com.nicheflow.service;
 
 import java.math.BigDecimal;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.nicheflow.exception.InvalidSearchException;
 import com.nicheflow.exception.ListingAccessDeniedException;
 import com.nicheflow.exception.ListingNotFoundException;
 import com.nicheflow.model.Listing;
@@ -26,6 +30,10 @@ import com.nicheflow.security.AuthenticatedUser;
 
 @Service
 public class ListingService {
+
+    static final int DEFAULT_PAGE = 0;
+    static final int DEFAULT_PAGE_SIZE = 20;
+    static final int MAX_PAGE_SIZE = 100;
 
     private final ListingRepository listingRepository;
     private final UserRepository userRepository;
@@ -117,6 +125,138 @@ public class ListingService {
         listing.setActive(false);
 
         return listingRepository.save(listing);
+    }
+
+    /**
+     * search - This function finds active listings by optional
+     * keyword (title, case-insensitive) and exact category, then
+     * applies an optional inclusive price range and one page of
+     * results. Keyword and category normalization is unchanged.
+     *
+     * Parameters:
+     * keyword - The title fragment the client typed, or null
+     * category - The exact category the client typed, or null
+     * minPrice - The inclusive lower price, or null
+     * maxPrice - The inclusive upper price, or null
+     * page - The zero-based page number, or null for the default
+     * size - The page size, or null for the default
+     *
+     * Return - One page of matching active listings
+     */
+    @Transactional(readOnly = true)
+    public Page<Listing> search(String keyword, String category,
+            BigDecimal minPrice, BigDecimal maxPrice, Integer page,
+            Integer size) {
+        // To skip a filter when the client left it blank
+        String titleKeyword = normalizeKeyword(keyword);
+        String exactCategory = normalizeCategory(category);
+
+        // To reject a range that can never match
+        rejectInvertedPriceRange(minPrice, maxPrice);
+
+        // To apply defaults and a stable id sort before paging
+        Pageable pageable = toPageable(page, size);
+
+        // To run the active-only query with those optional filters
+        return listingRepository.searchActive(titleKeyword,
+                exactCategory, minPrice, maxPrice, pageable);
+    }
+
+    /**
+     * rejectInvertedPriceRange - This function throws when both
+     * bounds are present and minPrice is greater than maxPrice.
+     *
+     * Parameters:
+     * minPrice - The inclusive lower price, or null
+     * maxPrice - The inclusive upper price, or null
+     */
+    private void rejectInvertedPriceRange(BigDecimal minPrice,
+            BigDecimal maxPrice) {
+        if (minPrice != null && maxPrice != null
+                && minPrice.compareTo(maxPrice) > 0) {
+            throw new InvalidSearchException(
+                    "minPrice cannot be greater than maxPrice");
+        }
+    }
+
+    /**
+     * toPageable - This function turns optional page and size into a
+     * PageRequest. Missing or negative page becomes 0. Missing or
+     * sub-1 size becomes 20. Size is capped at 100.
+     *
+     * Parameters:
+     * page - The requested page number, or null
+     * size - The requested page size, or null
+     *
+     * Return - The page request sorted by listing id
+     */
+    private Pageable toPageable(Integer page, Integer size) {
+        int pageNumber = DEFAULT_PAGE;
+        if (page != null && page >= 0) {
+            pageNumber = page;
+        }
+
+        int pageSize = DEFAULT_PAGE_SIZE;
+        if (size != null && size >= 1) {
+            pageSize = size;
+        }
+        if (pageSize > MAX_PAGE_SIZE) {
+            pageSize = MAX_PAGE_SIZE;
+        }
+
+        return PageRequest.of(pageNumber, pageSize,
+                Sort.by(Sort.Direction.ASC, "id"));
+    }
+
+    /**
+     * normalizeKeyword - This function trims the title fragment and
+     * escapes LIKE special characters. Blank input becomes null so
+     * the query does not apply a title filter.
+     *
+     * Parameters:
+     * keyword - The raw query-string value
+     *
+     * Return - The escaped fragment, or null
+     */
+    private String normalizeKeyword(String keyword) {
+        if (keyword == null || keyword.isBlank()) {
+            return null;
+        }
+
+        return escapeLike(keyword.trim());
+    }
+
+    /**
+     * normalizeCategory - This function trims the category. Blank
+     * input becomes null so the query does not apply a category
+     * filter. Case is left as typed because the match is exact.
+     *
+     * Parameters:
+     * category - The raw query-string value
+     *
+     * Return - The trimmed category, or null
+     */
+    private String normalizeCategory(String category) {
+        if (category == null || category.isBlank()) {
+            return null;
+        }
+
+        return category.trim();
+    }
+
+    /**
+     * escapeLike - This function prefixes \\, %, and _ so a keyword
+     * such as 100% does not become a wildcard match.
+     *
+     * Parameters:
+     * rawKeyword - The already-trimmed title fragment
+     *
+     * Return - The fragment safe to embed in LIKE
+     */
+    private String escapeLike(String rawKeyword) {
+        return rawKeyword.replace("\\", "\\\\")
+                .replace("%", "\\%")
+                .replace("_", "\\_");
     }
 
     /**

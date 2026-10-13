@@ -17,6 +17,10 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+
+import jakarta.validation.ConstraintViolationException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -102,6 +106,22 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * handleInvalidSearch - This function maps a bad LST-02 price
+     * range or page request to HTTP 400.
+     *
+     * Parameters:
+     * exception - The rejected search
+     *
+     * Return - A bad-request problem detail
+     */
+    @ExceptionHandler(InvalidSearchException.class)
+    public ProblemDetail handleInvalidSearch(
+            InvalidSearchException exception) {
+        return problem(HttpStatus.BAD_REQUEST, "Invalid search",
+                exception.getMessage());
+    }
+
+    /**
      * handleValidationFailure - This function maps bean-validation
      * errors to HTTP 400 and attaches the first message per field.
      *
@@ -116,11 +136,70 @@ public class GlobalExceptionHandler {
         // To collect the first message for each invalid field
         Map<String, String> fieldErrors = collectFieldErrors(exception);
 
-        // To return a 400 with that field map attached
-        ProblemDetail problem = problem(HttpStatus.BAD_REQUEST,
-                "Validation failed", "One or more fields are invalid");
-        problem.setProperty("errors", fieldErrors);
-        return problem;
+        return validationProblem(fieldErrors);
+    }
+
+    /**
+     * handleConstraintViolation - This function maps @Min / @DecimalMin
+     * failures on path and query params to HTTP 400.
+     *
+     * Parameters:
+     * exception - The method-parameter constraint failure
+     *
+     * Return - A bad-request problem detail with an errors map
+     */
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ProblemDetail handleConstraintViolation(
+            ConstraintViolationException exception) {
+        Map<String, String> fieldErrors = new LinkedHashMap<>();
+        exception.getConstraintViolations().forEach(violation -> {
+            String field = lastPathNode(violation.getPropertyPath()
+                    .toString());
+            fieldErrors.putIfAbsent(field, violation.getMessage());
+        });
+
+        return validationProblem(fieldErrors);
+    }
+
+    /**
+     * handleHandlerMethodValidation - This function maps Spring's
+     * method-validation wrapper to the same 400 body as @Valid.
+     *
+     * Parameters:
+     * exception - The handler method validation failure
+     *
+     * Return - A bad-request problem detail with an errors map
+     */
+    @ExceptionHandler(HandlerMethodValidationException.class)
+    public ProblemDetail handleHandlerMethodValidation(
+            HandlerMethodValidationException exception) {
+        Map<String, String> fieldErrors = new LinkedHashMap<>();
+        exception.getParameterValidationResults().forEach(result -> {
+            String field = result.getMethodParameter().getParameterName();
+            result.getResolvableErrors().forEach(error ->
+                    fieldErrors.putIfAbsent(field,
+                            error.getDefaultMessage()));
+        });
+
+        return validationProblem(fieldErrors);
+    }
+
+    /**
+     * handleTypeMismatch - This function maps a non-numeric query
+     * or path value, such as minPrice=foo, to HTTP 400.
+     *
+     * Parameters:
+     * exception - The failed type conversion
+     *
+     * Return - A bad-request problem detail with an errors map
+     */
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ProblemDetail handleTypeMismatch(
+            MethodArgumentTypeMismatchException exception) {
+        Map<String, String> fieldErrors = new LinkedHashMap<>();
+        fieldErrors.put(exception.getName(), "must be a valid number");
+
+        return validationProblem(fieldErrors);
     }
 
     /**
@@ -139,6 +218,41 @@ public class GlobalExceptionHandler {
                 .forEach(error -> fieldErrors.putIfAbsent(error.getField(),
                         error.getDefaultMessage()));
         return fieldErrors;
+    }
+
+    /**
+     * lastPathNode - This function keeps the parameter name from a
+     * constraint path such as search.minPrice.
+     *
+     * Parameters:
+     * propertyPath - The full constraint property path
+     *
+     * Return - The last dotted segment
+     */
+    private static String lastPathNode(String propertyPath) {
+        int dot = propertyPath.lastIndexOf('.');
+        if (dot < 0) {
+            return propertyPath;
+        }
+
+        return propertyPath.substring(dot + 1);
+    }
+
+    /**
+     * validationProblem - This function builds the shared 400 body
+     * used by every validation handler.
+     *
+     * Parameters:
+     * fieldErrors - The field-name to message map
+     *
+     * Return - A bad-request problem detail
+     */
+    private static ProblemDetail validationProblem(
+            Map<String, String> fieldErrors) {
+        ProblemDetail problem = problem(HttpStatus.BAD_REQUEST,
+                "Validation failed", "One or more fields are invalid");
+        problem.setProperty("errors", fieldErrors);
+        return problem;
     }
 
     /**
