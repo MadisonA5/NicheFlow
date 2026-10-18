@@ -1,7 +1,7 @@
 /**
- * This program turns auth, listing, and validation failures into HTTP
- * problem details so register, login, and LST-01 return stable status
- * codes and bodies.
+ * This program turns auth, listing, booking, and validation failures
+ * into HTTP problem details so register, login, LST-01, and BK-01
+ * return stable status codes and bodies.
  *
  * File:   GlobalExceptionHandler.java
  * Course: AUCSC 325
@@ -102,6 +102,54 @@ public class GlobalExceptionHandler {
     public ProblemDetail handleListingNotFound(
             ListingNotFoundException exception) {
         return problem(HttpStatus.NOT_FOUND, "Listing not found",
+                exception.getMessage());
+    }
+
+    /**
+     * handleBookingConflict - This function maps a lost BK-01 overlap
+     * to HTTP 409 so the client can choose another window.
+     *
+     * Parameters:
+     * exception - The overlap error from booking create
+     *
+     * Return - A conflict problem detail
+     */
+    @ExceptionHandler(BookingConflictException.class)
+    public ProblemDetail handleBookingConflict(
+            BookingConflictException exception) {
+        return problem(HttpStatus.CONFLICT, "Booking conflict",
+                exception.getMessage());
+    }
+
+    /**
+     * handleBookingAccessDenied - This function maps a non-customer
+     * booking create to HTTP 403.
+     *
+     * Parameters:
+     * exception - The denied booking create
+     *
+     * Return - A forbidden problem detail
+     */
+    @ExceptionHandler(BookingAccessDeniedException.class)
+    public ProblemDetail handleBookingAccessDenied(
+            BookingAccessDeniedException exception) {
+        return problem(HttpStatus.FORBIDDEN, "Booking access denied",
+                exception.getMessage());
+    }
+
+    /**
+     * handleInvalidBooking - This function maps a bad window or an
+     * unavailable listing to HTTP 400.
+     *
+     * Parameters:
+     * exception - The rejected booking create
+     *
+     * Return - A bad-request problem detail
+     */
+    @ExceptionHandler(InvalidBookingException.class)
+    public ProblemDetail handleInvalidBooking(
+            InvalidBookingException exception) {
+        return problem(HttpStatus.BAD_REQUEST, "Invalid booking",
                 exception.getMessage());
     }
 

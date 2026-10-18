@@ -1,9 +1,11 @@
 /**
  * This program wires AUTH-02 security: BCrypt hashing, a stateless JWT
  * filter, public health and auth endpoints, the temporary admin ping
- * pending ADM-01, LST-01 listing writes, and a 401 when no token is
- * present so the React client can tell "log in again" from
- * "forbidden". Supplier-role enforcement is proven by /api/listings.
+ * pending ADM-01, LST-01 listing writes, BK-01 booking creates, and
+ * a 401 when no token is present so the React client can tell
+ * "log in again" from "forbidden". Supplier-role enforcement is
+ * proven by /api/listings. Customer-role enforcement is proven by
+ * /api/bookings.
  *
  * File:   SecurityConfig.java
  * Course: AUCSC 325 
@@ -50,8 +52,8 @@ public class SecurityConfig {
     /**
      * securityFilterChain - This function builds the stateless JWT
      * filter chain: public health and auth routes, the ADM-01 admin
-     * ping gate, listing writes, everything else authenticated, and
-     * 401 for a missing token.
+     * ping gate, listing writes, booking creates, everything else
+     * authenticated, and 401 for a missing token.
      *
      * Parameters:
      * http - The Spring Security builder
@@ -111,8 +113,9 @@ public class SecurityConfig {
 
     /**
      * authorizeHttpRequests - This function opens GET /health and the
-     * two auth POSTs, keeps the ADM-01 admin ping gate, and requires
-     * a login for every other request.
+     * two auth POSTs, keeps the ADM-01 admin ping gate, limits
+     * listing writes to suppliers and booking creates to customers,
+     * and requires a login for every other request.
      *
      * Parameters:
      * http - The Spring Security builder to mutate
@@ -136,6 +139,9 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST,
                         "/api/listings/*/deactivate")
                         .hasRole("SUPPLIER")
+                // BK-01 create. Overlap rejection is in BookingService.
+                .requestMatchers(HttpMethod.POST, "/api/bookings")
+                        .hasRole("CUSTOMER")
                 .anyRequest().authenticated());
     }
 }
