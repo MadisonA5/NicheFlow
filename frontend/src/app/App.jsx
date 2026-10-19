@@ -1,12 +1,14 @@
 import {useEffect, useState} from 'react'
+import {BrowserRouter, Link, Navigate, Route, Routes} from 'react-router-dom'
 import nicheFlowLogo from '../assets/nicheflow logo1.png'
+import AuthPage from '../features/auth/AuthPage'
 import ListingCard from '../features/listings/ListingCard'
 import {getListings} from '../features/listings/listingsDataSource'
 import {filterListings} from '../features/search/filterListings'
 import SearchBar from '../features/search/SearchBar'
 import '../styles/App.css'
 
-function App() {
+function HomePage() {
     const [listings, setListings] = useState([])
     const [isLoading, setIsLoading] = useState(true)
     const [loadError, setLoadError] = useState('')
@@ -88,18 +90,18 @@ function App() {
     return (
         <>
             <header className="site-header">
-                <a className="brand" href="/" aria-label="NicheFlow home">
-                    <img className="brand-logo" src={nicheFlowLogo} alt="NicheFlow" />
-                </a>
+                <Link className="brand" to="/" aria-label="NicheFlow home">
+                    <img className="brand-logo" src={nicheFlowLogo} alt="NicheFlow"/>
+                </Link>
 
                 <nav className="main-nav" aria-label="Main navigation">
                     <a href="#listings">Explore</a>
                     <a href="#how-it-works">How it works</a>
                 </nav>
 
-                <button className="sign-in-button" type="button">
+                <Link className="sign-in-button" to="/sign-in">
                     Sign in
-                </button>
+                </Link>
             </header>
 
             <main>
@@ -219,11 +221,25 @@ function App() {
 
             <footer className="site-footer">
                 <span className="brand brand-footer">
-                    <img className="brand-logo" src={nicheFlowLogo} alt="NicheFlow" />
+                    <img className="brand-logo" src={nicheFlowLogo} alt="NicheFlow"/>
                 </span>
                 <p>Find it nearby. Make it yours.</p>
             </footer>
         </>
+    )
+}
+
+function App() {
+    return (
+        <BrowserRouter>
+            <Routes>
+                <Route path="/" element={<HomePage/>}/>
+                <Route path="/sign-in" element={<AuthPage mode="sign-in"/>}/>
+                <Route path="/sign-up" element={<AuthPage mode="sign-up"/>}/>
+                <Route path="/forgot-password" element={<AuthPage mode="forgot-password"/>}/>
+                <Route path="*" element={<Navigate to="/" replace/>}/>
+            </Routes>
+        </BrowserRouter>
     )
 }
 

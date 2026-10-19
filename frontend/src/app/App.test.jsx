@@ -137,4 +137,48 @@ describe('NicheFlow landing page', () => {
         expect(screen.queryByText(/Showing results for:/)).not.toBeInTheDocument()
         expect(screen.queryByText(/listings found/)).not.toBeInTheDocument()
     })
+
+    it('opens the sign-in page and navigates to account creation', async () => {
+        render(<App/>)
+
+        fireEvent.click(screen.getByRole('link', {name: 'Sign in'}))
+
+        expect(
+            await screen.findByRole('heading', {name: 'Welcome back'}),
+        ).toBeInTheDocument()
+        expect(screen.getByRole('textbox', {name: 'Email'})).toBeRequired()
+        expect(screen.getByLabelText('Password')).toBeRequired()
+        expect(
+            screen.getByText('Preview only — account access isn’t connected yet.'),
+        ).toBeInTheDocument()
+
+        fireEvent.click(screen.getByRole('link', {name: 'Create an account'}))
+
+        expect(
+            await screen.findByRole('heading', {name: 'Create your account'}),
+        ).toBeInTheDocument()
+        expect(screen.getByRole('textbox', {name: 'Name'})).toBeRequired()
+    })
+
+    it('shows a clear non-connected message when submitting password reset', async () => {
+        render(<App/>)
+
+        fireEvent.click(screen.getByRole('link', {name: 'Sign in'}))
+        fireEvent.click(
+            await screen.findByRole('link', {name: 'Forgot password?'}),
+        )
+
+        expect(
+            await screen.findByRole('heading', {name: 'Reset your password'}),
+        ).toBeInTheDocument()
+
+        fireEvent.change(screen.getByRole('textbox', {name: 'Email'}), {
+            target: {value: 'neighbor@example.com'},
+        })
+        fireEvent.click(screen.getByRole('button', {name: 'Send reset link'}))
+
+        expect(
+            await screen.findByRole('status'),
+        ).toHaveTextContent('No reset email was sent.')
+    })
 })
