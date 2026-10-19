@@ -345,6 +345,10 @@ h2 {
   letter-spacing: -0.3px;
 }
 
+.listing-details h3 a:hover {
+  color: #466b51;
+}
+
 .listing-location {
   margin-bottom: 17px;
   color: #77796f;
@@ -360,6 +364,283 @@ h2 {
 .listing-price strong {
   color: #292c25;
   font-size: 16px;
+}
+
+.view-listing-link,
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  color: #466b51;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.view-listing-link {
+  margin-top: 16px;
+}
+
+.view-listing-link:hover,
+.back-link:hover {
+  color: #355840;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.listing-page {
+  width: min(1000px, calc(100% - 48px));
+  min-height: calc(100vh - 82px);
+  margin: 0 auto;
+  padding: 40px 0 72px;
+}
+
+.back-link {
+  margin-bottom: 24px;
+}
+
+.listing-detail {
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  border: 1px solid #eeeee7;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 16px 46px rgb(54 66 46 / 7%);
+}
+
+.listing-detail-art {
+  min-height: 430px;
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.listing-detail-art > span:first-child {
+  font-size: clamp(100px, 16vw, 180px);
+  filter: drop-shadow(0 8px 12px rgb(30 35 26 / 12%));
+}
+
+.listing-detail-art.sage,
+.booking-summary-art.sage {
+  background: #dfe9d7;
+}
+
+.listing-detail-art.peach,
+.booking-summary-art.peach {
+  background: #f5e0ce;
+}
+
+.listing-detail-art.lavender,
+.booking-summary-art.lavender {
+  background: #e6e0ef;
+}
+
+.listing-detail-content {
+  padding: clamp(24px, 4vw, 44px);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.listing-detail-content h1,
+.booking-card h1 {
+  margin: 0 0 10px;
+  font-size: clamp(30px, 4vw, 42px);
+  letter-spacing: -1.8px;
+  line-height: 1.12;
+}
+
+.listing-detail-location {
+  margin-bottom: 24px;
+  color: #77796f;
+  font-size: 14px;
+}
+
+.listing-description {
+  margin-bottom: 32px;
+  color: #5f6259;
+  font-size: 15px;
+  line-height: 1.75;
+}
+
+.listing-detail-bottom {
+  width: 100%;
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.listing-detail-bottom .listing-price {
+  margin: 0;
+}
+
+.auth-submit-button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.booking-link {
+  display: inline-flex;
+  min-height: 46px;
+  padding: 0 22px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  color: #fffefa;
+  background: #466b51;
+  font-size: 14px;
+  font-weight: 700;
+  transition: background-color 150ms ease, transform 150ms ease;
+}
+
+.booking-link:hover {
+  background: #355840;
+  transform: translateY(-1px);
+}
+
+.preview-note {
+  margin: 20px 0 0;
+  color: #77796f;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.listing-page-message {
+  width: min(1000px, calc(100% - 48px));
+  min-height: 40vh;
+  margin: 0 auto;
+  padding: 64px 0;
+  color: #73756b;
+  text-align: center;
+}
+
+.listing-page-message .text-link {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.booking-page {
+  width: min(1000px, calc(100% - 48px));
+}
+
+.booking-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
+  align-items: start;
+  gap: 28px;
+}
+
+.booking-card,
+.booking-summary {
+  padding: 32px;
+  border: 1px solid #eeeee7;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 12px 36px rgb(54 66 46 / 6%);
+}
+
+.booking-card > .eyebrow {
+  margin-bottom: 10px;
+}
+
+.booking-card h1 {
+  margin-bottom: 10px;
+}
+
+.booking-card .auth-description {
+  text-align: left;
+}
+
+.booking-card .preview-note {
+  margin: 18px 0 24px;
+  padding: 10px 12px;
+  border-radius: 9px;
+  background: #f2f4ec;
+}
+
+.booking-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.booking-dates {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.booking-validation {
+  margin: -8px 0 0;
+  color: #9b342e;
+  font-size: 13px;
+}
+
+.booking-form .auth-submit-button {
+  margin-top: 0;
+}
+
+.booking-summary {
+  padding: 0 24px 24px;
+}
+
+.booking-summary-art {
+  height: 160px;
+  margin: 0 -24px 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 18px 18px 0 0;
+}
+
+.booking-summary-art span {
+  font-size: 72px;
+}
+
+.booking-summary .listing-category {
+  margin-bottom: 7px;
+}
+
+.booking-summary h2 {
+  margin-bottom: 7px;
+  font-size: 22px;
+  letter-spacing: -0.6px;
+}
+
+.booking-summary .listing-location {
+  margin-bottom: 22px;
+}
+
+.booking-price-line,
+.booking-total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 14px;
+}
+
+.booking-price-line {
+  padding-bottom: 16px;
+  border-bottom: 1px solid #eeeee7;
+  color: #73756b;
+}
+
+.booking-price-line strong,
+.booking-total strong {
+  color: #292c25;
+}
+
+.booking-total {
+  margin: 16px 0 0;
+  font-weight: 700;
+}
+
+.booking-estimate-note {
+  margin: 16px 0 0;
+  color: #77796f;
+  font-size: 12px;
+  line-height: 1.55;
 }
 
 .how-it-works {
@@ -588,6 +869,32 @@ h2 {
     padding: 38px 18px 56px;
   }
 
+  .listing-page,
+  .booking-page {
+    width: calc(100% - 36px);
+    padding-top: 28px;
+  }
+
+  .listing-detail {
+    grid-template-columns: 1fr;
+  }
+
+  .listing-detail-art {
+    min-height: 250px;
+  }
+
+  .listing-detail-art > span:first-child {
+    font-size: 112px;
+  }
+
+  .listing-detail-content {
+    min-height: 350px;
+  }
+
+  .booking-layout {
+    grid-template-columns: 1fr;
+  }
+
   .auth-card {
     padding: 30px 22px;
   }
@@ -682,5 +989,25 @@ h2 {
 @media (max-width: 430px) {
   .listing-controls {
     grid-template-columns: 1fr;
+  }
+
+  .booking-card,
+  .booking-summary {
+    padding-right: 20px;
+    padding-left: 20px;
+  }
+
+  .booking-summary-art {
+    margin-right: -20px;
+    margin-left: -20px;
+  }
+
+  .booking-dates {
+    grid-template-columns: 1fr;
+  }
+
+  .listing-detail-bottom {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }

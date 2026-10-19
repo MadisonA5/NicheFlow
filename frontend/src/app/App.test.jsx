@@ -181,4 +181,61 @@ describe('NicheFlow landing page', () => {
             await screen.findByRole('status'),
         ).toHaveTextContent('No reset email was sent.')
     })
+
+    it('opens a listing detail page and proceeds to its booking form', async () => {
+        render(<App/>)
+
+        fireEvent.click(await screen.findByRole('link', {name: 'Sunny garden studio'}))
+
+        expect(
+            await screen.findByRole('heading', {name: 'Sunny garden studio'}),
+        ).toBeInTheDocument()
+        expect(
+            screen.getByText(/A bright, peaceful workspace tucked beside a sunny neighborhood garden/),
+        ).toBeInTheDocument()
+
+        fireEvent.click(screen.getByRole('link', {name: 'Check dates'}))
+
+        expect(
+            await screen.findByRole('heading', {name: 'Request a booking'}),
+        ).toBeInTheDocument()
+        expect(screen.getByText('$38 × — days')).toBeInTheDocument()
+        expect(
+            screen.getByText(/availability and reservations aren’t connected/),
+        ).toBeInTheDocument()
+    })
+
+    it('estimates the booking total without creating a reservation', async () => {
+        render(<App/>)
+        fireEvent.click(await screen.findByRole('link', {name: 'Sunny garden studio'}))
+        fireEvent.click(await screen.findByRole('link', {name: 'Check dates'}))
+        await screen.findByRole('heading', {name: 'Request a booking'})
+
+        const tomorrow = new Date()
+        tomorrow.setDate(tomorrow.getDate() + 1)
+        const checkout = new Date(tomorrow)
+        checkout.setDate(checkout.getDate() + 2)
+        const formatDate = (date) =>
+            `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+
+        fireEvent.change(screen.getByRole('textbox', {name: 'Your name'}), {
+            target: {value: 'Taylor'},
+        })
+        fireEvent.change(screen.getByLabelText('Check-in'), {
+            target: {value: formatDate(tomorrow)},
+        })
+        fireEvent.change(screen.getByLabelText('Check-out'), {
+            target: {value: formatDate(checkout)},
+        })
+
+        expect(screen.getByText('$38 × 2 days')).toBeInTheDocument()
+        expect(
+            within(screen.getByLabelText('Booking estimate')).getAllByText('$76'),
+        ).toHaveLength(2)
+
+        fireEvent.click(screen.getByRole('button', {name: 'Continue'}))
+        expect(await screen.findByRole('status')).toHaveTextContent(
+            'No reservation was created and no information was sent.',
+        )
+    })
 })

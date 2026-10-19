@@ -2,7 +2,9 @@ import {useEffect, useState} from 'react'
 import {BrowserRouter, Link, Navigate, Route, Routes} from 'react-router-dom'
 import nicheFlowLogo from '../assets/nicheflow logo1.png'
 import AuthPage from '../features/auth/AuthPage'
+import BookingPage from '../features/listings/BookingPage'
 import ListingCard from '../features/listings/ListingCard'
+import ListingDetailPage from '../features/listings/ListingDetailPage'
 import {getListings} from '../features/listings/listingsDataSource'
 import {filterListings} from '../features/search/filterListings'
 import SearchBar from '../features/search/SearchBar'
@@ -237,6 +239,8 @@ function App() {
                 <Route path="/sign-in" element={<AuthPage mode="sign-in"/>}/>
                 <Route path="/sign-up" element={<AuthPage mode="sign-up"/>}/>
                 <Route path="/forgot-password" element={<AuthPage mode="forgot-password"/>}/>
+                <Route path="/listings/:listingId" element={<ListingDetailPage/>}/>
+                <Route path="/listings/:listingId/book" element={<BookingPage/>}/>
                 <Route path="*" element={<Navigate to="/" replace/>}/>
             </Routes>
         </BrowserRouter>
