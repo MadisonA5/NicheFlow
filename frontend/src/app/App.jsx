@@ -1,9 +1,28 @@
+import { useState } from 'react'
 import ListingCard from '../features/listings/ListingCard'
 import { listings } from '../features/listings/listings'
 import SearchBar from '../features/search/SearchBar'
 import '../styles/App.css'
 
 function App() {
+  const [search, setSearch] = useState({ keyword: '', location: '' })
+  const [hasSearched, setHasSearched] = useState(false)
+  const keyword = search.keyword.trim().toLowerCase()
+  const location = search.location.trim().toLowerCase()
+  const filteredListings = listings.filter((listing) => {
+    const searchableText = `${listing.title} ${listing.category}`.toLowerCase()
+
+    return (
+      searchableText.includes(keyword) &&
+      listing.location.toLowerCase().includes(location)
+    )
+  })
+
+  function handleSearch(searchCriteria) {
+    setSearch(searchCriteria)
+    setHasSearched(true)
+  }
+
   return (
     <>
       <header className="site-header">
@@ -31,7 +50,7 @@ function App() {
             neighborhood.
           </p>
 
-          <SearchBar />
+          <SearchBar onSearch={handleSearch} />
         </section>
 
         <section className="listings-section" id="listings">
@@ -45,11 +64,23 @@ function App() {
             </a>
           </div>
 
-          <div className="listing-grid">
-            {listings.map((listing) => (
-              <ListingCard key={listing.id} listing={listing} />
-            ))}
-          </div>
+          {hasSearched && (
+            <p className="search-result-count" aria-live="polite">
+              {filteredListings.length}{' '}
+              {filteredListings.length === 1 ? 'listing' : 'listings'} found
+            </p>
+          )}
+          {filteredListings.length > 0 ? (
+            <div className="listing-grid">
+              {filteredListings.map((listing) => (
+                <ListingCard key={listing.id} listing={listing} />
+              ))}
+            </div>
+          ) : (
+            <p className="empty-results" role="status">
+              No listings match your search. Try different keywords or location.
+            </p>
+          )}
         </section>
 
         <section className="how-it-works" id="how-it-works">

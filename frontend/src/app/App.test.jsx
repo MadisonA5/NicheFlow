@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import App from './App.jsx'
 
@@ -43,5 +43,55 @@ describe('NicheFlow landing page', () => {
     ).toBeInTheDocument()
     expect(within(listings[2]).getByText('Airdrie, AB')).toBeInTheDocument()
     expect(within(listings[2]).getByText('$55')).toBeInTheDocument()
+  })
+
+  it('filters listings by keyword without case sensitivity', () => {
+    render(<App />)
+
+    fireEvent.change(
+      screen.getByRole('searchbox', { name: 'What are you looking for?' }),
+      { target: { value: 'BIKE' } },
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }))
+
+    expect(screen.getAllByRole('article')).toHaveLength(1)
+    expect(
+      screen.getByRole('heading', { name: 'Weekend bike rental' }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('1 listing found')).toBeInTheDocument()
+  })
+
+  it('filters by location and matches it together with the keyword', () => {
+    render(<App />)
+
+    fireEvent.change(
+      screen.getByRole('searchbox', { name: 'What are you looking for?' }),
+      { target: { value: 'dinner' } },
+    )
+    fireEvent.change(screen.getByRole('textbox', { name: 'Where?' }), {
+      target: { value: 'airdrie' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }))
+
+    expect(screen.getAllByRole('article')).toHaveLength(1)
+    expect(
+      screen.getByRole('heading', { name: 'Backyard dinner spot' }),
+    ).toBeInTheDocument()
+  })
+
+  it('shows an empty-results message when nothing matches', () => {
+    render(<App />)
+
+    fireEvent.change(
+      screen.getByRole('searchbox', { name: 'What are you looking for?' }),
+      { target: { value: 'spaceship' } },
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }))
+
+    expect(screen.queryByRole('article')).not.toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'No listings match your search. Try different keywords or location.',
+    )
+    expect(screen.getByText('0 listings found')).toBeInTheDocument()
   })
 })
