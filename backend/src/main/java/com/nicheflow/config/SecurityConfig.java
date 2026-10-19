@@ -1,13 +1,13 @@
 /**
  * This program wires AUTH-02 security: BCrypt hashing, a stateless JWT
- * filter, public health and auth endpoints, role rules on the temporary
- * admin and supplier ping routes, and a 401 when no token is present
- * so the React client can tell "log in again" from "forbidden".
+ * filter, public health and auth endpoints, the temporary admin ping
+ * pending ADM-01, LST-01 listing writes, and a 401 when no token is
+ * present so the React client can tell "log in again" from
+ * "forbidden". Supplier-role enforcement is proven by /api/listings.
  *
  * File:   SecurityConfig.java
- * Course: AUCSC 325
- *
- *
+ * Course: AUCSC 325 
+ *    
  * References:
  * https://docs.spring.io/spring-security/reference/servlet/authentication/index.html
  *     - Spring Security servlet authentication
@@ -49,9 +49,9 @@ public class SecurityConfig {
 
     /**
      * securityFilterChain - This function builds the stateless JWT
-     * filter chain: public health and auth routes, temporary role
-     * gates, everything else authenticated, and 401 for a missing
-     * token.
+     * filter chain: public health and auth routes, the ADM-01 admin
+     * ping gate, listing writes, everything else authenticated, and
+     * 401 for a missing token.
      *
      * Parameters:
      * http - The Spring Security builder
@@ -68,7 +68,8 @@ public class SecurityConfig {
         // To return 401 when no token is present instead of 403
         useUnauthorizedEntryPoint(http);
 
-        // To leave health, register, and login public, then gate roles
+        // To leave health, register, and login public, then gate
+        // the ADM-01 ping and LST-01 writes
         authorizeHttpRequests(http);
 
         // To check the Bearer token before the username/password filter
@@ -110,8 +111,8 @@ public class SecurityConfig {
 
     /**
      * authorizeHttpRequests - This function opens GET /health and the
-     * two auth POSTs, applies the temporary AUTH-02 role gates, and
-     * requires a login for every other request.
+     * two auth POSTs, keeps the ADM-01 admin ping gate, and requires
+     * a login for every other request.
      *
      * Parameters:
      * http - The Spring Security builder to mutate
@@ -121,14 +122,20 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/health").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/auth/register",
                         "/api/auth/login").permitAll()
-                // Temporary AUTH-02 scaffolding. Remove when ADM-01
-                // lands (Week 6).
+                // Temporary AUTH-02 scaffolding for ADM-01 only.
+                // Remove when the real admin console lands (Week 6).
                 .requestMatchers(HttpMethod.GET, "/api/admin/**")
                         .hasRole("ADMIN")
-                // Temporary AUTH-02 scaffolding. Remove when LST-01
-                // lands (Week 4).
-                .requestMatchers(HttpMethod.GET, "/api/supplier/**")
-                        .hasAnyRole("SUPPLIER", "ADMIN")
+                // LST-01 writes: role gate uses the same JWT ROLE_
+                // the filter already set. Ownership still uses
+                // AuthenticatedUser.id() in ListingService.
+                .requestMatchers(HttpMethod.POST, "/api/listings")
+                        .hasRole("SUPPLIER")
+                .requestMatchers(HttpMethod.PUT, "/api/listings/*")
+                        .hasRole("SUPPLIER")
+                .requestMatchers(HttpMethod.POST,
+                        "/api/listings/*/deactivate")
+                        .hasRole("SUPPLIER")
                 .anyRequest().authenticated());
     }
 }
