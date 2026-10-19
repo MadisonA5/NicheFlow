@@ -9,6 +9,8 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
+    defaults:
+        working-directory: frontend/
 
     strategy:
       matrix:
@@ -17,7 +19,6 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    - run: cd frontend
     - name: Use Node.js ${{ matrix.node-version }}
       uses: actions/setup-node@v4
       with:
