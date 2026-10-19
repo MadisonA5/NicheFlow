@@ -1,4 +1,5 @@
 import {useEffect, useState} from 'react'
+import nicheFlowLogo from '../assets/nicheflow logo1.png'
 import ListingCard from '../features/listings/ListingCard'
 import {getListings} from '../features/listings/listingsDataSource'
 import {filterListings} from '../features/search/filterListings'
@@ -88,8 +89,7 @@ function App() {
         <>
             <header className="site-header">
                 <a className="brand" href="/" aria-label="NicheFlow home">
-                    <span className="brand-mark">N</span>
-                    NicheFlow
+                    <img className="brand-logo" src={nicheFlowLogo} alt="NicheFlow" />
                 </a>
 
                 <nav className="main-nav" aria-label="Main navigation">
@@ -218,10 +218,9 @@ function App() {
             </main>
 
             <footer className="site-footer">
-        <span className="brand brand-footer">
-          <span className="brand-mark">N</span>
-          NicheFlow
-        </span>
+                <span className="brand brand-footer">
+                    <img className="brand-logo" src={nicheFlowLogo} alt="NicheFlow" />
+                </span>
                 <p>Find it nearby. Make it yours.</p>
             </footer>
         </>
