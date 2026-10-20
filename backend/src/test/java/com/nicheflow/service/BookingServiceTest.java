@@ -42,6 +42,7 @@ import com.nicheflow.model.BookingStatus;
 import com.nicheflow.model.Listing;
 import com.nicheflow.model.Role;
 import com.nicheflow.model.User;
+import com.nicheflow.payment.PaymentClient;
 import com.nicheflow.repository.BookingRepository;
 import com.nicheflow.repository.ListingRepository;
 import com.nicheflow.repository.UserRepository;
@@ -74,6 +75,9 @@ class BookingServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private PaymentClient paymentClient;
 
     @InjectMocks
     private BookingService bookingService;

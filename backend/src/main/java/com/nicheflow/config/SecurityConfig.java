@@ -1,11 +1,11 @@
 /**
  * This program wires AUTH-02 security: BCrypt hashing, a stateless JWT
  * filter, public health and auth endpoints, the temporary admin ping
- * pending ADM-01, LST-01 listing writes, BK-01 booking creates, and
- * a 401 when no token is present so the React client can tell
- * "log in again" from "forbidden". Supplier-role enforcement is
- * proven by /api/listings. Customer-role enforcement is proven by
- * /api/bookings.
+ * pending ADM-01, LST-01 listing writes, BK-01 booking creates,
+ * BK-03 booking confirms, and a 401 when no token is present so the
+ * React client can tell "log in again" from "forbidden".
+ * Supplier-role enforcement is proven by /api/listings.
+ * Customer-role enforcement is proven by /api/bookings.
  *
  * File:   SecurityConfig.java
  * Course: AUCSC 325 
@@ -52,8 +52,8 @@ public class SecurityConfig {
     /**
      * securityFilterChain - This function builds the stateless JWT
      * filter chain: public health and auth routes, the ADM-01 admin
-     * ping gate, listing writes, booking creates, everything else
-     * authenticated, and 401 for a missing token.
+     * ping gate, listing writes, booking creates and confirms,
+     * everything else authenticated, and 401 for a missing token.
      *
      * Parameters:
      * http - The Spring Security builder
@@ -114,8 +114,9 @@ public class SecurityConfig {
     /**
      * authorizeHttpRequests - This function opens GET /health and the
      * two auth POSTs, keeps the ADM-01 admin ping gate, limits
-     * listing writes to suppliers and booking creates to customers,
-     * and requires a login for every other request.
+     * listing writes to suppliers, booking creates and confirms to
+     * customers, and booking cancels to a logged-in customer,
+     * supplier, or admin. Every other request requires a login.
      *
      * Parameters:
      * http - The Spring Security builder to mutate
@@ -142,6 +143,14 @@ public class SecurityConfig {
                 // BK-01 create. Overlap rejection is in BookingService.
                 .requestMatchers(HttpMethod.POST, "/api/bookings")
                         .hasRole("CUSTOMER")
+                // BK-03 confirm. The customer role passes the filter.
+                // Ownership is checked again in BookingService.
+                .requestMatchers(HttpMethod.PUT, "/api/bookings/*/confirm")
+                        .hasRole("CUSTOMER")
+                // BK-04 cancel. The service decides which of these
+                // three parties may cancel this booking.
+                .requestMatchers(HttpMethod.PUT, "/api/bookings/*/cancel")
+                        .hasAnyRole("CUSTOMER", "SUPPLIER", "ADMIN")
                 .anyRequest().authenticated());
     }
 }

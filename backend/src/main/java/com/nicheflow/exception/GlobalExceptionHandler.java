@@ -1,7 +1,7 @@
 /**
  * This program turns auth, listing, booking, and validation failures
- * into HTTP problem details so register, login, LST-01, and BK-01
- * return stable status codes and bodies.
+ * into HTTP problem details so register, login, LST-01, BK-01, and
+ * BK-02 return stable status codes and bodies.
  *
  * File:   GlobalExceptionHandler.java
  * Course: AUCSC 325
@@ -134,6 +134,38 @@ public class GlobalExceptionHandler {
     public ProblemDetail handleBookingAccessDenied(
             BookingAccessDeniedException exception) {
         return problem(HttpStatus.FORBIDDEN, "Booking access denied",
+                exception.getMessage());
+    }
+
+    /**
+     * handleInvalidBookingTransition - This function maps a refused
+     * BK-02 status change to HTTP 400.
+     *
+     * Parameters:
+     * exception - The refused status change
+     *
+     * Return - A bad-request problem detail
+     */
+    @ExceptionHandler(InvalidBookingTransitionException.class)
+    public ProblemDetail handleInvalidBookingTransition(
+            InvalidBookingTransitionException exception) {
+        return problem(HttpStatus.BAD_REQUEST, "Invalid booking transition",
+                exception.getMessage());
+    }
+
+    /**
+     * handleBookingNotFound - This function maps a missing booking id
+     * to HTTP 404.
+     *
+     * Parameters:
+     * exception - The missing-booking error
+     *
+     * Return - A not-found problem detail
+     */
+    @ExceptionHandler(BookingNotFoundException.class)
+    public ProblemDetail handleBookingNotFound(
+            BookingNotFoundException exception) {
+        return problem(HttpStatus.NOT_FOUND, "Booking not found",
                 exception.getMessage());
     }
 

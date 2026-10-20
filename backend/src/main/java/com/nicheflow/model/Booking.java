@@ -2,7 +2,8 @@
  * This program maps a customer booking to the bookings table for
  * BK-02. It stores the listing, the customer, the lifecycle status,
  * and the UTC start and end so the booking can move from pending
- * through confirmed and completed, or to cancelled.
+ * through confirmed and completed, or to cancelled. refund_amount
+ * stays null until a cancellation stores it.
  *
  * File:   Booking.java
  * Course: AUCSC 325
@@ -10,6 +11,7 @@
  */
 package com.nicheflow.model;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 
 import jakarta.persistence.Column;
@@ -49,6 +51,9 @@ public class Booking {
 
     @Column(name = "end_time", nullable = false)
     private Instant endTime;
+
+    @Column(name = "refund_amount", precision = 10, scale = 2)
+    private BigDecimal refundAmount;
 
     /**
      * Booking - This function gives JPA a no-argument constructor so
@@ -198,5 +203,28 @@ public class Booking {
     public void setEndTime(Instant endTime) {
         // To store a new UTC end on this booking
         this.endTime = endTime;
+    }
+
+    /**
+     * getRefundAmount - This function returns the refund stored when
+     * the booking was cancelled.
+     *
+     * Return - The refund, or null when the booking is not cancelled
+     */
+    public BigDecimal getRefundAmount() {
+        // To return the amount written by cancel
+        return refundAmount;
+    }
+
+    /**
+     * setRefundAmount - This function stores the refund for a
+     * cancellation.
+     *
+     * Parameters:
+     * refundAmount - The refund to store, or null
+     */
+    public void setRefundAmount(BigDecimal refundAmount) {
+        // To store the refund on this booking
+        this.refundAmount = refundAmount;
     }
 }

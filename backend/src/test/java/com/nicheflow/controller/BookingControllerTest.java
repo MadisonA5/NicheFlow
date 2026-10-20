@@ -27,6 +27,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -34,11 +35,13 @@ import com.nicheflow.TestBookings;
 import com.nicheflow.TestListings;
 import com.nicheflow.TestUsers;
 import com.nicheflow.config.SecurityConfig;
+import com.nicheflow.exception.BookingAccessDeniedException;
 import com.nicheflow.exception.BookingConflictException;
 import com.nicheflow.exception.GlobalExceptionHandler;
 import com.nicheflow.exception.InvalidBookingException;
 import com.nicheflow.exception.ListingNotFoundException;
 import com.nicheflow.model.Booking;
+import com.nicheflow.model.BookingStatus;
 import com.nicheflow.model.Listing;
 import com.nicheflow.model.Role;
 import com.nicheflow.model.User;
@@ -222,6 +225,130 @@ class BookingControllerTest {
 
         verify(bookingService, never()).create(any(), any(), any(),
                 any());
+    }
+
+    /**
+     * confirmPassesTheJwtPrincipalIntoTheService - This function
+     * checks confirm receives the customer from the JWT and returns
+     * the booking as confirmed.
+     */
+    @Test
+    void confirmPassesTheJwtPrincipalIntoTheService() throws Exception {
+        AuthenticatedUser caller = customer(9L, "good-token");
+        Booking confirmed = pendingBooking();
+        confirmed.setStatus(BookingStatus.CONFIRMED);
+        given(bookingService.confirm(caller, 11L)).willReturn(confirmed);
+
+        mockMvc.perform(put("/api/bookings/11/confirm")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer good-token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(11))
+                .andExpect(jsonPath("$.status").value("CONFIRMED"))
+                .andExpect(jsonPath("$.customerId").value(9));
+
+        verify(bookingService).confirm(caller, 11L);
+    }
+
+    /**
+     * confirmWithoutATokenReturns401 - This function hits confirm
+     * with no Authorization header.
+     */
+    @Test
+    void confirmWithoutATokenReturns401() throws Exception {
+        mockMvc.perform(put("/api/bookings/11/confirm"))
+                .andExpect(status().isUnauthorized());
+
+        verify(bookingService, never()).confirm(any(), any());
+    }
+
+    /**
+     * confirmWithASupplierTokenReturns403 - This function sends a
+     * SUPPLIER JWT and expects the ROLE_CUSTOMER gate.
+     */
+    @Test
+    void confirmWithASupplierTokenReturns403() throws Exception {
+        given(jwtService.parse("supplier-token"))
+                .willReturn(new AuthenticatedUser(7L, "ada@example.com",
+                        Role.SUPPLIER));
+
+        mockMvc.perform(put("/api/bookings/11/confirm")
+                .header(HttpHeaders.AUTHORIZATION,
+                        "Bearer supplier-token"))
+                .andExpect(status().isForbidden());
+
+        verify(bookingService, never()).confirm(any(), any());
+    }
+
+    /**
+     * confirmWhenTheServiceDeniesTheCallerReturns403 - This function
+     * stubs another customer so the ownership check is 403.
+     */
+    @Test
+    void confirmWhenTheServiceDeniesTheCallerReturns403() throws Exception {
+        AuthenticatedUser other = customer(8L, "other-token");
+        given(bookingService.confirm(other, 11L)).willThrow(
+                new BookingAccessDeniedException(
+                        "You are not allowed to change this booking"));
+
+        mockMvc.perform(put("/api/bookings/11/confirm")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer other-token"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.title")
+                        .value("Booking access denied"));
+    }
+
+    /**
+     * cancelPassesTheJwtPrincipalAndReturnsTheRefund - This function
+     * checks cancel receives the customer from the JWT and returns
+     * the refund in the JSON body.
+     */
+    @Test
+    void cancelPassesTheJwtPrincipalAndReturnsTheRefund()
+            throws Exception {
+        AuthenticatedUser caller = customer(9L, "good-token");
+        Booking cancelled = pendingBooking();
+        cancelled.setStatus(BookingStatus.CANCELLED);
+        cancelled.setRefundAmount(new BigDecimal("25.00"));
+        given(bookingService.cancel(caller, 11L)).willReturn(cancelled);
+
+        mockMvc.perform(put("/api/bookings/11/cancel")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer good-token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(11))
+                .andExpect(jsonPath("$.status").value("CANCELLED"))
+                .andExpect(jsonPath("$.refundAmount").value(25.00));
+
+        verify(bookingService).cancel(caller, 11L);
+    }
+
+    /**
+     * cancelWithoutATokenReturns401 - This function hits cancel with
+     * no Authorization header.
+     */
+    @Test
+    void cancelWithoutATokenReturns401() throws Exception {
+        mockMvc.perform(put("/api/bookings/11/cancel"))
+                .andExpect(status().isUnauthorized());
+
+        verify(bookingService, never()).cancel(any(), any());
+    }
+
+    /**
+     * cancelWhenTheServiceDeniesTheCallerReturns403 - This function
+     * stubs another customer so the party check is 403.
+     */
+    @Test
+    void cancelWhenTheServiceDeniesTheCallerReturns403() throws Exception {
+        AuthenticatedUser other = customer(8L, "other-token");
+        given(bookingService.cancel(other, 11L)).willThrow(
+                new BookingAccessDeniedException(
+                        "You are not allowed to change this booking"));
+
+        mockMvc.perform(put("/api/bookings/11/cancel")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer other-token"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.title")
+                        .value("Booking access denied"));
     }
 
     /**
