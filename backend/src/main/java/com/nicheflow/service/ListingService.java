@@ -182,15 +182,17 @@ public class ListingService {
     /**
      * toPageable - This function turns optional page and size into a
      * PageRequest. Missing or negative page becomes 0. Missing or
-     * sub-1 size becomes 20. Size is capped at 100.
+     * sub-1 size becomes 20. Size is capped at 100. Admin user and
+     * booking lists call this same helper so they cannot drift to
+     * different limits.
      *
      * Parameters:
      * page - The requested page number, or null
      * size - The requested page size, or null
      *
-     * Return - The page request sorted by listing id
+     * Return - The page request sorted by id ascending
      */
-    private Pageable toPageable(Integer page, Integer size) {
+    public static Pageable toPageable(Integer page, Integer size) {
         int pageNumber = DEFAULT_PAGE;
         if (page != null && page >= 0) {
             pageNumber = page;

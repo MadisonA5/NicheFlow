@@ -1,7 +1,9 @@
 /**
  * This program proves the BK-01 HTTP surface uses the same JWT
  * AuthenticatedUser as listing writes: a customer create returns the
- * pending booking, a supplier is 403, and an overlap is 409.
+ * pending booking, a supplier is 403, and an overlap is 409. An
+ * admin cancel is the HTTP proof that ADMIN may cancel another
+ * user's booking.
  *
  * File:   BookingControllerTest.java
  * Course: AUCSC 325
@@ -349,6 +351,32 @@ class BookingControllerTest {
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.title")
                         .value("Booking access denied"));
+    }
+
+    /**
+     * cancelWithAnAdminTokenReturnsTheRefund - This function sends
+     * an ADMIN JWT for a booking owned by another user. The filter
+     * lets ADMIN through, and the body carries the refund.
+     */
+    @Test
+    void cancelWithAnAdminTokenReturnsTheRefund() throws Exception {
+        AuthenticatedUser admin = new AuthenticatedUser(4L,
+                "admin@example.com", Role.ADMIN);
+        given(jwtService.parse("admin-token")).willReturn(admin);
+        Booking cancelled = pendingBooking();
+        cancelled.setStatus(BookingStatus.CANCELLED);
+        cancelled.setRefundAmount(new BigDecimal("25.00"));
+        given(bookingService.cancel(admin, 11L)).willReturn(cancelled);
+
+        mockMvc.perform(put("/api/bookings/11/cancel")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer admin-token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(11))
+                .andExpect(jsonPath("$.customerId").value(9))
+                .andExpect(jsonPath("$.status").value("CANCELLED"))
+                .andExpect(jsonPath("$.refundAmount").value(25.00));
+
+        verify(bookingService).cancel(admin, 11L);
     }
 
     /**
