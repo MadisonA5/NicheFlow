@@ -19,6 +19,7 @@ import java.util.Date;
 
 import javax.crypto.SecretKey;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.nicheflow.config.JwtProperties;
@@ -49,6 +50,7 @@ public class JwtService {
      * Parameters:
      * properties - The signing secret and configured lifetime
      */
+    @Autowired
     public JwtService(JwtProperties properties) {
         this(properties, Clock.systemUTC());
     }
