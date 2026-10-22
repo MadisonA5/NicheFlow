@@ -86,9 +86,9 @@ Real-time --> WebSockets (native to Spring Boot)
 
 | Purpose | Backend (Java) | Frontend (JavaScript/React) |
 |---|---|---|
-| Unit testing | JUnit | Jest |
-| Coverage | JaCoCo | Jest coverage |
-| Static analysis | SpotBugs, Checkstyle | ESLint, Prettier |
+| Unit testing | JUnit | Vitest |
+| Coverage | JaCoCo | Vitest coverage |
+| Static analysis | SpotBugs, Checkstyle | Oxlint |
 | Mutation testing | PIT | StrykerJS |
 | Component testing | — | React Testing Library |
 | E2E testing | Playwright (shared) | Playwright (shared) |
