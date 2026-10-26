@@ -63,12 +63,15 @@ public class ListingService {
      * title - The display name of the listing
      * category - The category string
      * price - The price with two decimal places
+     * location - Where the listing is offered
+     * description - The supplier's description of the listing
      *
      * Return - The persisted listing
      */
     @Transactional
     public Listing create(AuthenticatedUser caller, String title,
-            String category, BigDecimal price) {
+            String category, BigDecimal price, String location,
+            String description) {
         // To reject a customer or admin creating a supplier listing
         requireSupplierRole(caller);
 
@@ -76,14 +79,16 @@ public class ListingService {
         User supplier = loadCallerAccount(caller);
 
         // To persist a new active listing owned by that supplier
-        Listing listing = new Listing(title, category, price, supplier);
+        Listing listing = new Listing(title, category, price, location,
+                description, supplier);
 
         return listingRepository.save(listing);
     }
 
     /**
-     * update - This function overwrites title, category, and price
-     * when the JWT caller is the listing's own supplier.
+     * update - This function overwrites title, category, price,
+     * location, and description when the JWT caller is the listing's
+     * own supplier.
      *
      * Parameters:
      * caller - The AuthenticatedUser from the security context
@@ -91,18 +96,23 @@ public class ListingService {
      * title - The new display name
      * category - The new category string
      * price - The new price with two decimal places
+     * location - The new place the listing is offered
+     * description - The new supplier description
      *
      * Return - The updated listing
      */
     @Transactional
     public Listing update(AuthenticatedUser caller, Long listingId,
-            String title, String category, BigDecimal price) {
+            String title, String category, BigDecimal price,
+            String location, String description) {
         Listing listing = requireOwnedListing(caller, listingId);
 
         // To replace only the editable fields, never owner or active
         listing.setTitle(title);
         listing.setCategory(category);
         listing.setPrice(price);
+        listing.setLocation(location);
+        listing.setDescription(description);
 
         return listingRepository.save(listing);
     }

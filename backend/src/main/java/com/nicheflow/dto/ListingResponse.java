@@ -14,7 +14,8 @@ import java.math.BigDecimal;
 import com.nicheflow.model.Listing;
 
 public record ListingResponse(Long id, String title, String category,
-        BigDecimal price, Long supplierId, boolean active) {
+        BigDecimal price, String location, String description,
+        Long supplierId, boolean active) {
 
     /**
      * from - This function copies the public listing fields, including
@@ -28,6 +29,7 @@ public record ListingResponse(Long id, String title, String category,
     public static ListingResponse from(Listing listing) {
         return new ListingResponse(listing.getId(), listing.getTitle(),
                 listing.getCategory(), listing.getPrice(),
+                listing.getLocation(), listing.getDescription(),
                 listing.getSupplier().getId(), listing.isActive());
     }
 }

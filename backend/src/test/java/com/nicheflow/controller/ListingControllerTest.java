@@ -53,8 +53,11 @@ import com.nicheflow.service.ListingService;
 @Import({ SecurityConfig.class, GlobalExceptionHandler.class })
 class ListingControllerTest {
 
+    private static final String LOCATION = "Edmonton";
+    private static final String DESCRIPTION = "A day on the river.";
     private static final String CREATE_BODY = """
-            {"title":"Kayak","category":"SPORTS","price":25.00}
+            {"title":"Kayak","category":"SPORTS","price":25.00,\
+            "location":"Edmonton","description":"A day on the river."}
             """;
 
     @Autowired
@@ -79,7 +82,7 @@ class ListingControllerTest {
         Listing stored = TestListings.withId(3L, "Kayak", "SPORTS",
                 new BigDecimal("25.00"), owner);
         given(listingService.create(eq(caller), eq("Kayak"), eq("SPORTS"),
-                any())).willReturn(stored);
+                any(), eq(LOCATION), eq(DESCRIPTION))).willReturn(stored);
 
         mockMvc.perform(post("/api/listings")
                 .header(HttpHeaders.AUTHORIZATION, "Bearer good-token")
@@ -91,7 +94,34 @@ class ListingControllerTest {
                 .andExpect(jsonPath("$.active").value(true));
 
         verify(listingService).create(eq(caller), eq("Kayak"),
-                eq("SPORTS"), any());
+                eq("SPORTS"), any(), eq(LOCATION), eq(DESCRIPTION));
+    }
+
+    /**
+     * createRoundTripsLocationAndDescription - This function posts
+     * location and description and expects those same strings on the
+     * created listing response.
+     */
+    @Test
+    void createRoundTripsLocationAndDescription() throws Exception {
+        AuthenticatedUser caller = supplier(7L, "good-token");
+        User owner = TestUsers.withId(7L, "ada@example.com",
+                "$2a$10$hashed", Role.SUPPLIER);
+        Listing stored = TestListings.withId(3L, "Kayak", "SPORTS",
+                new BigDecimal("25.00"), owner);
+        given(listingService.create(eq(caller), eq("Kayak"), eq("SPORTS"),
+                any(), eq(LOCATION), eq(DESCRIPTION))).willReturn(stored);
+
+        mockMvc.perform(post("/api/listings")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer good-token")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(CREATE_BODY))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.location").value(LOCATION))
+                .andExpect(jsonPath("$.description").value(DESCRIPTION));
+
+        verify(listingService).create(eq(caller), eq("Kayak"),
+                eq("SPORTS"), any(), eq(LOCATION), eq(DESCRIPTION));
     }
 
     /**
@@ -124,7 +154,7 @@ class ListingControllerTest {
                 .andExpect(status().isForbidden());
 
         verify(listingService, never()).create(any(), any(), any(),
-                any());
+                any(), any(), any());
     }
 
     /**
@@ -139,7 +169,9 @@ class ListingControllerTest {
                 .header(HttpHeaders.AUTHORIZATION, "Bearer good-token")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                        {"title":"Kayak","category":"SPORTS","price":-1.00}
+                        {"title":"Kayak","category":"SPORTS","price":-1.00,\
+                        "location":"Edmonton",\
+                        "description":"A day on the river."}
                         """))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors.price").exists());
@@ -153,7 +185,8 @@ class ListingControllerTest {
     void updateWhenTheServiceDeniesOwnershipReturns403() throws Exception {
         AuthenticatedUser other = supplier(8L, "other-token");
         given(listingService.update(eq(other), eq(3L), any(), any(),
-                any())).willThrow(new ListingAccessDeniedException());
+                any(), any(), any()))
+                .willThrow(new ListingAccessDeniedException());
 
         mockMvc.perform(put("/api/listings/3")
                 .header(HttpHeaders.AUTHORIZATION, "Bearer other-token")
@@ -170,7 +203,8 @@ class ListingControllerTest {
     void updateWhenTheListingIsMissingReturns404() throws Exception {
         AuthenticatedUser caller = supplier(7L, "good-token");
         given(listingService.update(eq(caller), eq(99L), any(), any(),
-                any())).willThrow(new ListingNotFoundException(99L));
+                any(), any(), any()))
+                .willThrow(new ListingNotFoundException(99L));
 
         mockMvc.perform(put("/api/listings/99")
                 .header(HttpHeaders.AUTHORIZATION, "Bearer good-token")
@@ -330,13 +364,15 @@ class ListingControllerTest {
                 .header(HttpHeaders.AUTHORIZATION, "Bearer good-token")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                        {"title":"","category":"SPORTS","price":25.00}
+                        {"title":"","category":"SPORTS","price":25.00,\
+                        "location":"Edmonton",\
+                        "description":"A day on the river."}
                         """))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors.title").exists());
 
         verify(listingService, never()).create(any(), any(), any(),
-                any());
+                any(), any(), any());
     }
 
     /**
@@ -352,13 +388,15 @@ class ListingControllerTest {
                 .header(HttpHeaders.AUTHORIZATION, "Bearer good-token")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                        {"title":"%s","category":"SPORTS","price":25.00}
+                        {"title":"%s","category":"SPORTS","price":25.00,\
+                        "location":"Edmonton",\
+                        "description":"A day on the river."}
                         """.formatted(oversizedTitle)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors.title").exists());
 
         verify(listingService, never()).create(any(), any(), any(),
-                any());
+                any(), any(), any());
     }
 
     /**
@@ -373,13 +411,15 @@ class ListingControllerTest {
                 .header(HttpHeaders.AUTHORIZATION, "Bearer good-token")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                        {"title":"Kayak","category":"","price":25.00}
+                        {"title":"Kayak","category":"","price":25.00,\
+                        "location":"Edmonton",\
+                        "description":"A day on the river."}
                         """))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors.category").exists());
 
         verify(listingService, never()).create(any(), any(), any(),
-                any());
+                any(), any(), any());
     }
 
     /**
@@ -395,13 +435,15 @@ class ListingControllerTest {
                 .header(HttpHeaders.AUTHORIZATION, "Bearer good-token")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                        {"title":"Kayak","category":"%s","price":25.00}
+                        {"title":"Kayak","category":"%s","price":25.00,\
+                        "location":"Edmonton",\
+                        "description":"A day on the river."}
                         """.formatted(oversizedCategory)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors.category").exists());
 
         verify(listingService, never()).create(any(), any(), any(),
-                any());
+                any(), any(), any());
     }
 
     /**
@@ -416,13 +458,15 @@ class ListingControllerTest {
                 .header(HttpHeaders.AUTHORIZATION, "Bearer good-token")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                        {"title":"Kayak","category":"SPORTS","price":25.123}
+                        {"title":"Kayak","category":"SPORTS","price":25.123,\
+                        "location":"Edmonton",\
+                        "description":"A day on the river."}
                         """))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors.price").exists());
 
         verify(listingService, never()).create(any(), any(), any(),
-                any());
+                any(), any(), any());
     }
 
     /**
@@ -442,7 +486,7 @@ class ListingControllerTest {
                 .andExpect(jsonPath("$.errors.listingId").exists());
 
         verify(listingService, never()).update(any(), any(), any(),
-                any(), any());
+                any(), any(), any(), any());
     }
 
     /**

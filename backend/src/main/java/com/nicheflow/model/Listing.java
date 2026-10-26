@@ -2,7 +2,8 @@
  * This program maps a supplier listing to the listings table for
  * LST-01. Availability slots are not stored here yet; this row is
  * the listing itself so later CRUD and ownership checks have a
- * place to persist title, category, price, and active.
+ * place to persist title, category, price, location,
+ * description, and active.
  *
  * File:   Listing.java
  * Course: AUCSC 325
@@ -39,6 +40,12 @@ public class Listing {
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal price;
 
+    @Column(nullable = false, length = 255)
+    private String location;
+
+    @Column(nullable = false, length = 2000)
+    private String description;
+
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
     @JoinColumn(name = "supplier_id", nullable = false)
     private User supplier;
@@ -64,14 +71,18 @@ public class Listing {
      * title - The display name of the listing
      * category - The search/filter category stored as text
      * price - The price with two decimal places
+     * location - Where the listing is offered
+     * description - The supplier's description of the listing
      * supplier - The User who owns this listing
      */
     public Listing(String title, String category, BigDecimal price,
-            User supplier) {
-        // To store the fields a later create-listing path will pass in
+            String location, String description, User supplier) {
+        // To store the fields the create-listing path passes in
         this.title = title;
         this.category = category;
         this.price = price;
+        this.location = location;
+        this.description = description;
         this.supplier = supplier;
         this.active = true;
     }
@@ -141,6 +152,48 @@ public class Listing {
      */
     public void setPrice(BigDecimal price) {
         this.price = price;
+    }
+
+    /**
+     * getLocation - This function returns where the listing is
+     * offered.
+     *
+     * Return - The location
+     */
+    public String getLocation() {
+        return location;
+    }
+
+    /**
+     * setLocation - This function replaces where the listing is
+     * offered.
+     *
+     * Parameters:
+     * location - The new location to store
+     */
+    public void setLocation(String location) {
+        this.location = location;
+    }
+
+    /**
+     * getDescription - This function returns the supplier's
+     * description of the listing.
+     *
+     * Return - The description
+     */
+    public String getDescription() {
+        return description;
+    }
+
+    /**
+     * setDescription - This function replaces the supplier's
+     * description.
+     *
+     * Parameters:
+     * description - The new description to store
+     */
+    public void setDescription(String description) {
+        this.description = description;
     }
 
     /**

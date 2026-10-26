@@ -1,6 +1,7 @@
 /**
  * This program is the JSON body for creating or editing a listing.
  * Price is limited to two decimal places and cannot be negative.
+ * Location and description are required text.
  *
  * File:   ListingRequest.java
  * Course: AUCSC 325 
@@ -25,5 +26,9 @@ public record ListingRequest(
         @NotNull
         @DecimalMin(value = "0.00", inclusive = true)
         @Digits(integer = 8, fraction = 2)
-        BigDecimal price) {
+        BigDecimal price,
+
+        @NotBlank @Size(max = 255) String location,
+
+        @NotBlank @Size(max = 2000) String description) {
 }

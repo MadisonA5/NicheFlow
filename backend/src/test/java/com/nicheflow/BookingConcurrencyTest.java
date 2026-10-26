@@ -246,7 +246,9 @@ class BookingConcurrencyTest {
                 .header(HttpHeaders.AUTHORIZATION, bearer(token))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                        {"title":"Kayak","category":"SPORTS","price":25.00}
+                        {"title":"Kayak","category":"SPORTS","price":25.00,\
+                        "location":"Edmonton",\
+                        "description":"A day on the river."}
                         """))
                 .andExpect(status().isCreated())
                 .andReturn();

@@ -47,6 +47,8 @@ import com.nicheflow.security.AuthenticatedUser;
 class ListingServiceTest {
 
     private static final BigDecimal PRICE = new BigDecimal("25.00");
+    private static final String LOCATION = "Edmonton";
+    private static final String DESCRIPTION = "A day on the river.";
 
     private final User owner = TestUsers.withId(7L, "ada@example.com",
             "$2a$10$hashed", Role.SUPPLIER);
@@ -83,10 +85,14 @@ class ListingServiceTest {
         given(listingRepository.save(any(Listing.class)))
                 .willAnswer(call -> call.getArgument(0));
 
-        listingService.create(ownerCaller, "Kayak", "SPORTS", PRICE);
+        listingService.create(ownerCaller, "Kayak", "SPORTS", PRICE,
+                LOCATION, DESCRIPTION);
 
         verify(listingRepository).save(savedListing.capture());
         assertThat(savedListing.getValue().getSupplier()).isSameAs(owner);
+        assertThat(savedListing.getValue().getLocation()).isEqualTo(LOCATION);
+        assertThat(savedListing.getValue().getDescription())
+                .isEqualTo(DESCRIPTION);
         assertThat(savedListing.getValue().isActive()).isTrue();
     }
 
@@ -97,7 +103,7 @@ class ListingServiceTest {
     @Test
     void createRejectsACustomerCaller() {
         assertThatThrownBy(() -> listingService.create(customerCaller,
-                "Kayak", "SPORTS", PRICE))
+                "Kayak", "SPORTS", PRICE, LOCATION, DESCRIPTION))
                 .isInstanceOf(ListingAccessDeniedException.class);
 
         verify(listingRepository, never()).save(any(Listing.class));
@@ -117,11 +123,15 @@ class ListingServiceTest {
                 .willAnswer(call -> call.getArgument(0));
 
         Listing updated = listingService.update(ownerCaller, 3L,
-                "New kayak", "WATER", PRICE);
+                "New kayak", "WATER", PRICE, "Calgary",
+                "An afternoon rental.");
 
         assertThat(updated.getTitle()).isEqualTo("New kayak");
         assertThat(updated.getCategory()).isEqualTo("WATER");
         assertThat(updated.getPrice()).isEqualByComparingTo(PRICE);
+        assertThat(updated.getLocation()).isEqualTo("Calgary");
+        assertThat(updated.getDescription())
+                .isEqualTo("An afternoon rental.");
         assertThat(updated.getSupplier()).isSameAs(owner);
     }
 
@@ -137,7 +147,7 @@ class ListingServiceTest {
                 .willReturn(Optional.of(stored));
 
         assertThatThrownBy(() -> listingService.update(otherSupplier, 3L,
-                "Stolen", "SPORTS", PRICE))
+                "Stolen", "SPORTS", PRICE, LOCATION, DESCRIPTION))
                 .isInstanceOf(ListingAccessDeniedException.class);
 
         verify(listingRepository, never()).save(any(Listing.class));
@@ -192,7 +202,7 @@ class ListingServiceTest {
         given(listingRepository.findById(99L)).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> listingService.update(ownerCaller, 99L,
-                "Kayak", "SPORTS", PRICE))
+                "Kayak", "SPORTS", PRICE, LOCATION, DESCRIPTION))
                 .isInstanceOf(ListingNotFoundException.class);
     }
 

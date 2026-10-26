@@ -59,6 +59,9 @@ class ListingIntegrationTest {
                 .andExpect(jsonPath("$.title").value("Red Kayak"))
                 .andExpect(jsonPath("$.category").value("SPORTS"))
                 .andExpect(jsonPath("$.price").value(25.00))
+                .andExpect(jsonPath("$.location").value("Edmonton"))
+                .andExpect(jsonPath("$.description")
+                        .value("A day on the river."))
                 .andExpect(jsonPath("$.active").value(true))
                 .andExpect(jsonPath("$.id").isNumber());
     }
@@ -209,7 +212,8 @@ class ListingIntegrationTest {
     private static String listingBody(String title, String category,
             String price) {
         return """
-                {"title":"%s","category":"%s","price":%s}
+                {"title":"%s","category":"%s","price":%s,\
+                "location":"Edmonton","description":"A day on the river."}
                 """.formatted(title, category, price);
     }
 

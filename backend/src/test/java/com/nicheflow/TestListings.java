@@ -17,6 +17,9 @@ import com.nicheflow.model.User;
 
 public final class TestListings {
 
+    private static final String LOCATION = "Edmonton";
+    private static final String DESCRIPTION = "A day on the river.";
+
     /**
      * TestListings - This function hides the helper constructor so
      * tests only call withId.
@@ -39,7 +42,8 @@ public final class TestListings {
      */
     public static Listing withId(long id, String title, String category,
             BigDecimal price, User supplier) {
-        Listing listing = new Listing(title, category, price, supplier);
+        Listing listing = new Listing(title, category, price, LOCATION,
+                DESCRIPTION, supplier);
         ReflectionTestUtils.setField(listing, "id", id);
         return listing;
     }

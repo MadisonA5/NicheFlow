@@ -63,7 +63,7 @@ public class ListingController {
      *
      * Parameters:
      * caller - The identity parsed out of a valid JWT
-     * request - The title, category, and price
+     * request - The title, category, price, location, and description
      *
      * Return - The persisted listing
      */
@@ -74,7 +74,8 @@ public class ListingController {
             @Valid @RequestBody ListingRequest request) {
         // To persist the listing owned by this JWT subject
         Listing listing = listingService.create(caller, request.title(),
-                request.category(), request.price());
+                request.category(), request.price(), request.location(),
+                request.description());
 
         return ListingResponse.from(listing);
     }
@@ -124,7 +125,8 @@ public class ListingController {
      * Parameters:
      * caller - The identity parsed out of a valid JWT
      * listingId - The listing to edit; must be 1 or greater
-     * request - The new title, category, and price
+     * request - The new title, category, price, location, and
+     *     description
      *
      * Return - The updated listing
      */
@@ -135,7 +137,8 @@ public class ListingController {
             @Valid @RequestBody ListingRequest request) {
         // To overwrite fields only after the service checks ownership
         Listing listing = listingService.update(caller, listingId,
-                request.title(), request.category(), request.price());
+                request.title(), request.category(), request.price(),
+                request.location(), request.description());
 
         return ListingResponse.from(listing);
     }
