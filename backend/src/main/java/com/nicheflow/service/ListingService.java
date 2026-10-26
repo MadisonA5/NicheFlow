@@ -167,9 +167,14 @@ public class ListingService {
         // To apply defaults and a stable id sort before paging
         Pageable pageable = toPageable(page, size);
 
-        // To run the active-only query with those optional filters
-        return listingRepository.searchActive(titleKeyword,
-                exactCategory, minPrice, maxPrice, pageable);
+        // To bind typed, non-null values even when a filter is omitted
+        return listingRepository.searchActive(
+                titleKeyword == null ? "" : titleKeyword,
+                exactCategory == null ? "" : exactCategory,
+                minPrice != null,
+                minPrice == null ? BigDecimal.ZERO : minPrice,
+                maxPrice != null,
+                maxPrice == null ? BigDecimal.ZERO : maxPrice, pageable);
     }
 
     /**

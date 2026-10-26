@@ -1,5 +1,10 @@
 import {afterEach, describe, expect, it, vi} from 'vitest'
-import {deactivateListing, getAccount, updateListing} from './accountDataSource'
+import {
+    acceptBooking,
+    deactivateListing,
+    getAccount,
+    updateListing,
+} from './accountDataSource'
 
 describe('account data source', () => {
     afterEach(() => {
@@ -101,5 +106,36 @@ describe('account data source', () => {
             method: 'POST',
             headers: {Authorization: 'Bearer supplier.jwt.token'},
         })
+    })
+
+    it('accepts a booking using the supplier token', async () => {
+        localStorage.setItem('nicheflow.session', JSON.stringify({
+            token: 'supplier.jwt.token',
+            user: {id: 7, role: 'SUPPLIER'},
+        }))
+        const accepted = {id: 11, status: 'ACCEPTED'}
+        const fetchMock = vi.fn().mockResolvedValue({
+            ok: true,
+            json: async () => accepted,
+        })
+        vi.stubGlobal('fetch', fetchMock)
+
+        await expect(acceptBooking(11)).resolves.toEqual(accepted)
+        expect(fetchMock).toHaveBeenCalledWith('/api/bookings/11/accept', {
+            method: 'PUT',
+            headers: {Authorization: 'Bearer supplier.jwt.token'},
+        })
+    })
+
+    it('does not send an accept request for a customer account', async () => {
+        localStorage.setItem('nicheflow.session', JSON.stringify({
+            token: 'customer.jwt.token',
+            user: {id: 9, role: 'CUSTOMER'},
+        }))
+        const fetchMock = vi.fn()
+        vi.stubGlobal('fetch', fetchMock)
+
+        await expect(acceptBooking(11)).rejects.toThrow('supplier account')
+        expect(fetchMock).not.toHaveBeenCalled()
     })
 })

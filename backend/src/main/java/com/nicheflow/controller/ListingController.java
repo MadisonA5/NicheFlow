@@ -82,9 +82,14 @@ public class ListingController {
 
     /**
      * search - This function returns one page of active listings
+<<<<<<< Updated upstream
      * filtered by optional keyword, category, and price range.
      * Visitors may browse without a login. Writes stay
      * supplier-only.
+=======
+     * filtered by optional keyword, category, and price range. Browsing
+     * is public; writes stay supplier-only.
+>>>>>>> Stashed changes
      *
      * Parameters:
      * keyword - Title fragment, case-insensitive, or omitted

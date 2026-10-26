@@ -281,6 +281,43 @@ class BookingControllerTest {
         verify(bookingService, never()).confirm(any(), any());
     }
 
+    @Test
+    void supplierCanAcceptBookingRequest() throws Exception {
+        AuthenticatedUser supplier = new AuthenticatedUser(7L,
+                "ada@example.com", Role.SUPPLIER);
+        given(jwtService.parse("supplier-token")).willReturn(supplier);
+        Booking accepted = pendingBooking();
+        accepted.setStatus(BookingStatus.ACCEPTED);
+        given(bookingService.accept(supplier, 11L)).willReturn(accepted);
+
+        mockMvc.perform(put("/api/bookings/11/accept")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer supplier-token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(11))
+                .andExpect(jsonPath("$.status").value("ACCEPTED"));
+
+        verify(bookingService).accept(supplier, 11L);
+    }
+
+    @Test
+    void acceptingBookingRequiresSupplierRole() throws Exception {
+        customer(9L, "customer-token");
+
+        mockMvc.perform(put("/api/bookings/11/accept")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer customer-token"))
+                .andExpect(status().isForbidden());
+
+        verify(bookingService, never()).accept(any(), any());
+    }
+
+    @Test
+    void acceptingBookingRequiresAuthentication() throws Exception {
+        mockMvc.perform(put("/api/bookings/11/accept"))
+                .andExpect(status().isUnauthorized());
+
+        verify(bookingService, never()).accept(any(), any());
+    }
+
     /**
      * confirmWhenTheServiceDeniesTheCallerReturns403 - This function
      * stubs another customer so the ownership check is 403.

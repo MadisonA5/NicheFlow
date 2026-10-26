@@ -43,10 +43,12 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
      * owner after the transaction ends.
      *
      * Parameters:
-     * keyword - The already-escaped title fragment, or null
-     * category - The exact category, or null
-     * minPrice - The inclusive lower price, or null
-     * maxPrice - The inclusive upper price, or null
+     * keyword - The already-escaped title fragment, or an empty string
+     * category - The exact category, or an empty string
+     * hasMinPrice - Whether to apply the inclusive lower price
+     * minPrice - The lower price, or zero when its filter is omitted
+     * hasMaxPrice - Whether to apply the inclusive upper price
+     * maxPrice - The upper price, or zero when its filter is omitted
      * pageable - The page number, size, and sort
      *
      * Return - One page of matching active listings
@@ -55,32 +57,34 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
             SELECT listing FROM Listing listing
             JOIN FETCH listing.supplier
             WHERE listing.active = true
-              AND (:keyword IS NULL
+              AND (:keyword = ''
                    OR LOWER(listing.title) LIKE LOWER(
                            CONCAT('%', :keyword, '%')) ESCAPE '\\')
-              AND (:category IS NULL
+              AND (:category = ''
                    OR listing.category = :category)
-              AND (:minPrice IS NULL
+              AND (:hasMinPrice = false
                    OR listing.price >= :minPrice)
-              AND (:maxPrice IS NULL
+              AND (:hasMaxPrice = false
                    OR listing.price <= :maxPrice)
             """,
             countQuery = """
             SELECT COUNT(listing) FROM Listing listing
             WHERE listing.active = true
-              AND (:keyword IS NULL
+              AND (:keyword = ''
                    OR LOWER(listing.title) LIKE LOWER(
                            CONCAT('%', :keyword, '%')) ESCAPE '\\')
-              AND (:category IS NULL
+              AND (:category = ''
                    OR listing.category = :category)
-              AND (:minPrice IS NULL
+              AND (:hasMinPrice = false
                    OR listing.price >= :minPrice)
-              AND (:maxPrice IS NULL
+              AND (:hasMaxPrice = false
                    OR listing.price <= :maxPrice)
             """)
     Page<Listing> searchActive(@Param("keyword") String keyword,
             @Param("category") String category,
+            @Param("hasMinPrice") boolean hasMinPrice,
             @Param("minPrice") BigDecimal minPrice,
+            @Param("hasMaxPrice") boolean hasMaxPrice,
             @Param("maxPrice") BigDecimal maxPrice,
             Pageable pageable);
 }

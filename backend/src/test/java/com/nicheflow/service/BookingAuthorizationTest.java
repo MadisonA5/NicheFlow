@@ -104,6 +104,30 @@ class BookingAuthorizationTest {
         verify(bookingRepository).save(booking);
     }
 
+    @Test
+    void supplierCanAcceptTheirOwnPendingBooking() {
+        Booking booking = load(BookingStatus.PENDING);
+        stubSave();
+
+        Booking stored = bookingService.accept(supplierCaller, BOOKING_ID);
+
+        assertThat(stored.getStatus()).isEqualTo(BookingStatus.ACCEPTED);
+        verify(bookingRepository).save(booking);
+        verify(paymentClient, never()).charge(any(), any());
+    }
+
+    @Test
+    void supplierCannotAcceptAnotherSuppliersBooking() {
+        assertDenied(otherSupplierCaller, BookingStatus.PENDING,
+                BookingStatus.ACCEPTED);
+    }
+
+    @Test
+    void customerCannotAcceptABooking() {
+        assertDenied(customerCaller, BookingStatus.PENDING,
+                BookingStatus.ACCEPTED);
+    }
+
     /**
      * customerCanCancelTheirOwnPendingBooking - This function stores
      * pending to cancelled for the booking's own customer.
@@ -260,6 +284,23 @@ class BookingAuthorizationTest {
 
         Booking stored = bookingService.confirm(customerCaller,
                 BOOKING_ID);
+
+        assertThat(stored.getStatus()).isEqualTo(BookingStatus.CONFIRMED);
+        verify(paymentClient).charge(PRICE,
+                BookingService.confirmIdempotencyKey(BOOKING_ID));
+    }
+
+    @Test
+    void customerCanConfirmAndPayAfterSupplierAccepts() {
+        Booking booking = load(BookingStatus.ACCEPTED);
+        given(paymentClient.charge(eq(PRICE),
+                eq(BookingService.confirmIdempotencyKey(BOOKING_ID))))
+                .willReturn(new PaymentCharge(
+                        BookingService.confirmIdempotencyKey(BOOKING_ID),
+                        PRICE));
+        stubSave();
+
+        Booking stored = bookingService.confirm(customerCaller, BOOKING_ID);
 
         assertThat(stored.getStatus()).isEqualTo(BookingStatus.CONFIRMED);
         verify(paymentClient).charge(PRICE,

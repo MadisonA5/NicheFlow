@@ -152,6 +152,8 @@ public class SecurityConfig {
                 // Ownership is checked again in BookingService.
                 .requestMatchers(HttpMethod.PUT, "/api/bookings/*/confirm")
                         .hasRole("CUSTOMER")
+                .requestMatchers(HttpMethod.PUT, "/api/bookings/*/accept")
+                        .hasRole("SUPPLIER")
                 // BK-04 cancel. The service decides which of these
                 // three parties may cancel this booking.
                 .requestMatchers(HttpMethod.PUT, "/api/bookings/*/cancel")

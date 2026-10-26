@@ -70,6 +70,36 @@ export async function getAccount() {
     return payload
 }
 
+export async function acceptBooking(bookingId) {
+    const session = getSession()
+    if (!session?.token || session.user.role !== 'SUPPLIER') {
+        throw new Error('Sign in with a supplier account to accept bookings.')
+    }
+
+    const response = await fetch(`/api/bookings/${bookingId}/accept`, {
+        method: 'PUT',
+        headers: {Authorization: `Bearer ${session.token}`},
+    })
+    const payload = await response.json().catch(() => null)
+
+    if (response.status === 401) {
+        signOut()
+        const error = new Error(
+            'Your sign-in session expired or was rejected. Please sign in again.',
+        )
+        error.status = response.status
+        throw error
+    }
+    if (!response.ok) {
+        throw new Error(payload?.detail ?? `Booking request failed (${response.status}).`)
+    }
+    if (Number(payload?.id) !== Number(bookingId) || payload?.status !== 'ACCEPTED') {
+        throw new Error('The booking response was not in the expected format.')
+    }
+
+    return payload
+}
+
 export function updateListing(listingId, listing) {
     return listingRequest(listingId, 'PUT', '', listing)
 }

@@ -950,6 +950,11 @@ h2 {
   background: #e4f0e3;
 }
 
+.account-status.accepted {
+  color: #355840;
+  background: #e4f0e3;
+}
+
 .account-listing-controls {
   display: flex;
   flex-direction: column;

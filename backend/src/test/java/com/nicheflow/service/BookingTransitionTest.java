@@ -156,16 +156,18 @@ class BookingTransitionTest {
     }
 
     /**
-     * validTransitions - This function lists the four BK-02 edges
+     * validTransitions - This function lists the allowed BK-02 edges
      * the service is allowed to store.
      *
-     * Return - Pending to confirmed, pending to cancelled, confirmed
-     * to cancelled, and confirmed to completed
+     * Return - The booking lifecycle's allowed status edges
      */
     private static Stream<Arguments> validTransitions() {
         return Stream.of(
                 Arguments.of(PENDING, CONFIRMED),
+                Arguments.of(PENDING, BookingStatus.ACCEPTED),
                 Arguments.of(PENDING, CANCELLED),
+                Arguments.of(BookingStatus.ACCEPTED, CONFIRMED),
+                Arguments.of(BookingStatus.ACCEPTED, CANCELLED),
                 Arguments.of(CONFIRMED, CANCELLED),
                 Arguments.of(CONFIRMED, COMPLETED));
     }
@@ -180,13 +182,20 @@ class BookingTransitionTest {
         return Stream.of(
                 Arguments.of(PENDING, PENDING),
                 Arguments.of(PENDING, COMPLETED),
+                Arguments.of(BookingStatus.ACCEPTED, PENDING),
+                Arguments.of(BookingStatus.ACCEPTED,
+                        BookingStatus.ACCEPTED),
+                Arguments.of(BookingStatus.ACCEPTED, COMPLETED),
                 Arguments.of(CONFIRMED, PENDING),
+                Arguments.of(CONFIRMED, BookingStatus.ACCEPTED),
                 Arguments.of(CONFIRMED, CONFIRMED),
                 Arguments.of(COMPLETED, PENDING),
+                Arguments.of(COMPLETED, BookingStatus.ACCEPTED),
                 Arguments.of(COMPLETED, CONFIRMED),
                 Arguments.of(COMPLETED, COMPLETED),
                 Arguments.of(COMPLETED, CANCELLED),
                 Arguments.of(CANCELLED, PENDING),
+                Arguments.of(CANCELLED, BookingStatus.ACCEPTED),
                 Arguments.of(CANCELLED, CONFIRMED),
                 Arguments.of(CANCELLED, COMPLETED),
                 Arguments.of(CANCELLED, CANCELLED));
@@ -211,16 +220,16 @@ class BookingTransitionTest {
     /**
      * allowedCaller - This function picks a party who may make the
      * move, so the lifecycle test is not rejected for authorization.
-     * Complete belongs to the supplier. Confirm and cancel belong
-     * to the customer.
+     * Accept and complete belong to the supplier. Confirm and cancel
+     * belong to the customer.
      *
      * Parameters:
      * next - The status the caller asked for
      *
-     * Return - The customer, or the supplier when next is completed
+     * Return - The supplier for accept/complete, otherwise the customer
      */
     private AuthenticatedUser allowedCaller(BookingStatus next) {
-        if (next == COMPLETED) {
+        if (next == COMPLETED || next == BookingStatus.ACCEPTED) {
             return supplierCaller;
         }
 

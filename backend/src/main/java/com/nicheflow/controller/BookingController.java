@@ -92,6 +92,25 @@ public class BookingController {
     }
 
     /**
+     * accept - This function accepts a pending booking request for a
+     * listing owned by the supplier caller.
+     *
+     * Parameters:
+     * caller - The identity parsed out of a valid JWT
+     * bookingId - The pending booking to accept; must be 1 or greater
+     *
+     * Return - The booking now stored as accepted
+     */
+    @PutMapping("/{bookingId}/accept")
+    public BookingResponse accept(
+            @AuthenticationPrincipal AuthenticatedUser caller,
+            @PathVariable @Min(1) Long bookingId) {
+        Booking booking = bookingService.accept(caller, bookingId);
+
+        return BookingResponse.from(booking);
+    }
+
+    /**
      * cancel - This function cancels a booking the caller is allowed
      * to cancel and returns the stored refund.
      *

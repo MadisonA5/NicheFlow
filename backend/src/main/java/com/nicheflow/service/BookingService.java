@@ -125,18 +125,18 @@ public class BookingService {
     /**
      * transition - This function moves one booking to nextStatus when
      * that edge is allowed and the caller is one of the parties for
-     * that edge. Confirm charges in confirm, not here.
+     * that edge. Accept does not charge; confirm charges.
      *
      * Parameters:
      * caller - The AuthenticatedUser from the security context
      * bookingId - The booking to move
-     * nextStatus - CONFIRMED, COMPLETED, or CANCELLED
+     * nextStatus - ACCEPTED, CONFIRMED, COMPLETED, or CANCELLED
      *
      * Return - The booking after the new status is stored
      *
      * Example:
-     * The booking customer may move PENDING to CONFIRMED. A supplier
-     * who tries that move throws BookingAccessDeniedException.
+     * The listing supplier may accept PENDING. The booking customer
+     * may confirm an accepted request and pay.
      */
     @Transactional
     public Booking transition(AuthenticatedUser caller, Long bookingId,
@@ -156,14 +156,28 @@ public class BookingService {
     }
 
     /**
-     * confirm - This function charges the listing price, then moves
-     * the caller's own pending booking to confirmed. The idempotency
-     * key is stable for this booking, so a retry does not charge
-     * again.
+     * accept - This function accepts a pending booking request for the
+     * supplier who owns its listing.
      *
      * Parameters:
      * caller - The AuthenticatedUser from the security context
-     * bookingId - The pending booking to confirm
+     * bookingId - The request to accept
+     *
+     * Return - The booking stored as accepted
+     */
+    @Transactional
+    public Booking accept(AuthenticatedUser caller, Long bookingId) {
+        return transition(caller, bookingId, BookingStatus.ACCEPTED);
+    }
+
+    /**
+     * confirm - This function charges the listing price, then moves
+     * the caller's own pending or accepted booking to confirmed. The
+     * idempotency key is stable so a retry does not charge again.
+     *
+     * Parameters:
+     * caller - The AuthenticatedUser from the security context
+     * bookingId - The pending or accepted booking to confirm
      *
      * Return - The booking after it is stored as confirmed
      */
@@ -171,7 +185,7 @@ public class BookingService {
     public Booking confirm(AuthenticatedUser caller, Long bookingId) {
         Booking booking = loadBooking(bookingId);
 
-        // To charge only a pending booking this customer may confirm
+        // To charge only a pending or accepted booking this customer may confirm
         rejectIllegalTransition(booking.getStatus(),
                 BookingStatus.CONFIRMED);
         rejectUnauthorizedTransition(caller, booking,
@@ -266,6 +280,10 @@ public class BookingService {
             return isBookingCustomer(caller, booking);
         }
 
+        if (next == BookingStatus.ACCEPTED) {
+            return isListingSupplier(caller, booking);
+        }
+
         if (next == BookingStatus.CANCELLED) {
             return callerMayCancel(caller, booking);
         }
@@ -349,19 +367,26 @@ public class BookingService {
 
     /**
      * isAllowedTransition - This function reports whether the BK-02
-     * lifecycle allows the move. The allowed edges are pending to
-     * confirmed, pending or confirmed to cancelled, and confirmed
-     * to completed.
+     * lifecycle allows the move. Pending can be accepted, confirmed,
+     * or cancelled; accepted can be confirmed or cancelled; confirmed
+     * can be completed or cancelled.
      *
      * Parameters:
      * current - The status stored on the booking
      * next - The status the caller asked for
      *
-     * Return - True when the move is one of those four edges
+     * Return - True when the move is one of those allowed edges
      */
     private static boolean isAllowedTransition(BookingStatus current,
             BookingStatus next) {
         if (current == BookingStatus.PENDING
+                && (next == BookingStatus.ACCEPTED
+                        || next == BookingStatus.CONFIRMED
+                        || next == BookingStatus.CANCELLED)) {
+            return true;
+        }
+
+        if (current == BookingStatus.ACCEPTED
                 && (next == BookingStatus.CONFIRMED
                         || next == BookingStatus.CANCELLED)) {
             return true;

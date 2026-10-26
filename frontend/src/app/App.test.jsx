@@ -390,6 +390,48 @@ describe('NicheFlow landing page', () => {
         expect(screen.getByText('Active')).toBeInTheDocument()
     })
 
+    it('lets a supplier accept a pending booking from their account', async () => {
+        localStorage.setItem('nicheflow.session', JSON.stringify({
+            token: 'supplier.jwt.token',
+            user: {id: 7, email: 'maker@example.com', role: 'SUPPLIER'},
+        }))
+        const booking = {
+            id: 11,
+            customerId: 9,
+            listingTitle: 'Garden workspace',
+            location: 'Calgary, AB',
+            price: 38,
+            status: 'PENDING',
+            startTime: '2026-11-01T00:00:00Z',
+            endTime: '2026-11-03T00:00:00Z',
+        }
+        const fetchMock = vi.fn((url) => Promise.resolve({
+            ok: true,
+            json: async () => {
+                if (url === '/api/bookings/11/accept') {
+                    return {id: 11, status: 'ACCEPTED'}
+                }
+                if (url === '/api/account') {
+                    return {listings: [], bookings: [booking]}
+                }
+                return {items: []}
+            },
+        }))
+        vi.stubGlobal('fetch', fetchMock)
+        render(<App/>)
+
+        fireEvent.click(await screen.findByRole('link', {name: 'My account'}))
+        fireEvent.click(await screen.findByRole('button', {name: 'Accept booking'}))
+
+        expect(await screen.findByText('accepted')).toBeInTheDocument()
+        expect(screen.queryByRole('button', {name: 'Accept booking'}))
+            .not.toBeInTheDocument()
+        expect(fetchMock).toHaveBeenCalledWith('/api/bookings/11/accept', {
+            method: 'PUT',
+            headers: {Authorization: 'Bearer supplier.jwt.token'},
+        })
+    })
+
     it('lets a supplier edit their listing from the account page', async () => {
         localStorage.setItem('nicheflow.session', JSON.stringify({
             token: 'supplier.jwt.token',

@@ -1,7 +1,12 @@
 import {useEffect, useState} from 'react'
 import {Link} from 'react-router-dom'
 import {getSession} from '../auth/authDataSource'
-import {deactivateListing, getAccount, updateListing} from './accountDataSource'
+import {
+    acceptBooking,
+    deactivateListing,
+    getAccount,
+    updateListing,
+} from './accountDataSource'
 
 const categories = ['Workspace', 'Outdoor', 'Events', 'Services', 'Other']
 
@@ -23,6 +28,8 @@ function AccountPage() {
     const [confirmDeactivateId, setConfirmDeactivateId] = useState(null)
     const [workingListingId, setWorkingListingId] = useState(null)
     const [actionError, setActionError] = useState('')
+    const [workingBookingId, setWorkingBookingId] = useState(null)
+    const [bookingActionError, setBookingActionError] = useState('')
 
     useEffect(() => {
         let isCurrent = true
@@ -98,6 +105,25 @@ function AccountPage() {
             setActionError(error.message)
         } finally {
             setWorkingListingId(null)
+        }
+    }
+
+    async function handleAcceptBooking(bookingId) {
+        setWorkingBookingId(bookingId)
+        setBookingActionError('')
+        try {
+            const accepted = await acceptBooking(bookingId)
+            setAccount((current) => ({
+                ...current,
+                bookings: current.bookings.map((booking) =>
+                    booking.id === bookingId
+                        ? {...booking, status: accepted.status}
+                        : booking),
+            }))
+        } catch (error) {
+            setBookingActionError(error.message)
+        } finally {
+            setWorkingBookingId(null)
         }
     }
 
@@ -307,10 +333,32 @@ function AccountPage() {
                                                 {formatDateTime(booking.endTime)}
                                             </p>
                                         </div>
-                                        <span className="account-status">{booking.status.toLowerCase()}</span>
+                                        <div className="account-listing-actions">
+                                            <span className={`account-status ${booking.status.toLowerCase()}`}>
+                                                {booking.status.toLowerCase()}
+                                            </span>
+                                            {session.user.role === 'SUPPLIER' &&
+                                                booking.status === 'PENDING' && (
+                                                    <button
+                                                        className="booking-link"
+                                                        type="button"
+                                                        disabled={workingBookingId === booking.id}
+                                                        onClick={() =>
+                                                            handleAcceptBooking(booking.id)}>
+                                                        {workingBookingId === booking.id
+                                                            ? 'Accepting…'
+                                                            : 'Accept booking'}
+                                                    </button>
+                                                )}
+                                        </div>
                                     </article>
                                 ))}
                             </div>
+                        )}
+                        {bookingActionError && (
+                            <p className="booking-validation" role="alert">
+                                {bookingActionError}
+                            </p>
                         )}
                     </section>
                 </>

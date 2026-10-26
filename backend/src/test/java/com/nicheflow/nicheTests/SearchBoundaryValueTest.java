@@ -23,9 +23,8 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
-import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.BDDMockito.given;
 import org.mockito.Captor;
 import org.mockito.InjectMocks;
@@ -83,8 +82,9 @@ class SearchBoundaryValueTest {
         listingService.search(null, null, null, null, page, 20);
 
         // To read the page request the service built
-        verify(listingRepository).searchActive(isNull(), isNull(),
-                isNull(), isNull(), pageableCaptor.capture());
+        verify(listingRepository).searchActive(eq(""), eq(""), eq(false),
+                eq(BigDecimal.ZERO), eq(false), eq(BigDecimal.ZERO),
+                pageableCaptor.capture());
         assertThat(pageableCaptor.getValue().getPageNumber())
                 .as(position)
                 .isEqualTo(expectedPage);
@@ -117,8 +117,9 @@ class SearchBoundaryValueTest {
 
         listingService.search(null, null, null, null, 1, size);
 
-        verify(listingRepository).searchActive(isNull(), isNull(),
-                isNull(), isNull(), pageableCaptor.capture());
+        verify(listingRepository).searchActive(eq(""), eq(""), eq(false),
+                eq(BigDecimal.ZERO), eq(false), eq(BigDecimal.ZERO),
+                pageableCaptor.capture());
         assertThat(pageableCaptor.getValue().getPageSize())
                 .as(position)
                 .isEqualTo(expectedSize);
@@ -149,12 +150,13 @@ class SearchBoundaryValueTest {
                     .hasMessage("minPrice cannot be greater than maxPrice");
 
             verify(listingRepository, never()).searchActive(any(), any(),
-                    any(), any(), any());
+                    anyBoolean(), any(), anyBoolean(), any(), any());
             return;
         }
 
-        given(listingRepository.searchActive(isNull(), isNull(),
-                samePrice(minPrice), samePrice(maxPrice),
+        given(listingRepository.searchActive(eq(""), eq(""),
+                eq(minPrice != null), samePrice(minPrice),
+                eq(maxPrice != null), samePrice(maxPrice),
                 any(Pageable.class)))
                 .willReturn(new PageImpl<>(List.of()));
 
@@ -162,8 +164,9 @@ class SearchBoundaryValueTest {
         assertThat(listingService.search(null, null, minPrice, maxPrice,
                 null, null).getContent()).isEmpty();
 
-        verify(listingRepository).searchActive(isNull(), isNull(),
-                samePrice(minPrice), samePrice(maxPrice),
+        verify(listingRepository).searchActive(eq(""), eq(""),
+                eq(minPrice != null), samePrice(minPrice),
+                eq(maxPrice != null), samePrice(maxPrice),
                 any(Pageable.class));
     }
 
@@ -190,29 +193,24 @@ class SearchBoundaryValueTest {
     /**
      * givenEmptySearch - This function stubs the repository so a
      * valid search returns an empty page. Null filters are allowed
-     * because omitted keyword, category, and prices are nominal.
+     * because omitted keyword, category, and prices use sentinels.
      */
     private void givenEmptySearch() {
-        given(listingRepository.searchActive(nullable(String.class),
-                nullable(String.class), nullable(BigDecimal.class),
-                nullable(BigDecimal.class), any(Pageable.class)))
+        given(listingRepository.searchActive(eq(""), eq(""), anyBoolean(),
+                any(BigDecimal.class), anyBoolean(), any(BigDecimal.class),
+                any(Pageable.class)))
                 .willReturn(new PageImpl<>(List.of()));
     }
 
     /**
-     * samePrice - This function picks a Mockito matcher for a price
-     * that may be absent. eq does not match null.
+     * samePrice - This function matches a bound or its zero sentinel.
      *
      * Parameters:
-     * price - The bound to match, or null
+     * price - The bound to match, or null when the zero sentinel is used
      *
-     * Return - The matcher for that bound
+     * Return - The matcher for the bound or its zero sentinel
      */
     private static BigDecimal samePrice(BigDecimal price) {
-        if (price == null) {
-            return isNull();
-        }
-
-        return eq(price);
+        return eq(price == null ? BigDecimal.ZERO : price);
     }
 }

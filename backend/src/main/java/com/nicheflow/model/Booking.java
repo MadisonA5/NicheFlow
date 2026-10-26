@@ -145,7 +145,7 @@ public class Booking {
     /**
      * getStatus - This function returns the BK-02 lifecycle state.
      *
-     * Return - PENDING, CONFIRMED, COMPLETED, or CANCELLED
+     * Return - PENDING, ACCEPTED, CONFIRMED, COMPLETED, or CANCELLED
      */
     public BookingStatus getStatus() {
         // To return the lifecycle state stored on this booking
@@ -156,7 +156,7 @@ public class Booking {
      * setStatus - This function replaces the stored lifecycle state.
      *
      * Parameters:
-     * status - PENDING, CONFIRMED, COMPLETED, or CANCELLED
+     * status - PENDING, ACCEPTED, CONFIRMED, COMPLETED, or CANCELLED
      */
     public void setStatus(BookingStatus status) {
         // To store the lifecycle state on this booking
