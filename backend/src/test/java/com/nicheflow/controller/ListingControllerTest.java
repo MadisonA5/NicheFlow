@@ -256,13 +256,20 @@ class ListingControllerTest {
     }
 
     /**
-     * searchWithoutATokenReturns401 - This function hits browse with
-     * no Authorization header, the same 401 path as /me.
+     * searchWithoutATokenIsPublic - This function proves visitors can
+     * browse listings without signing in.
      */
     @Test
-    void searchWithoutATokenReturns401() throws Exception {
+    void searchWithoutATokenIsPublic() throws Exception {
+        given(listingService.search(null, null, null, null, null, null))
+                .willReturn(new PageImpl<>(List.of()));
+
         mockMvc.perform(get("/api/listings"))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items").isArray())
+                .andExpect(jsonPath("$.items").isEmpty());
+
+        verify(listingService).search(null, null, null, null, null, null);
     }
 
     /**
