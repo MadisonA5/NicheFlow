@@ -307,6 +307,48 @@ class ListingControllerTest {
     }
 
     /**
+     * publicSearchReturnsListingsAndOtherRoutesStayClosed - This
+     * function loads a listing with no token, then checks that an
+     * admin read still requires a login and a customer still cannot
+     * create a listing.
+     */
+    @Test
+    void publicSearchReturnsListingsAndOtherRoutesStayClosed()
+            throws Exception {
+        User owner = TestUsers.withId(7L, "ada@example.com",
+                "$2a$10$hashed", Role.SUPPLIER);
+        Listing hit = TestListings.withId(3L, "Red Kayak", "SPORTS",
+                new BigDecimal("25.00"), owner);
+        given(listingService.search(null, null, null, null, null, null))
+                .willReturn(new PageImpl<>(List.of(hit)));
+
+        // To let a visitor browse without a JWT
+        mockMvc.perform(get("/api/listings"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].id").value(3))
+                .andExpect(jsonPath("$.items[0].title")
+                        .value("Red Kayak"));
+
+        // To keep admin reads behind a login
+        mockMvc.perform(get("/api/admin/users"))
+                .andExpect(status().isUnauthorized());
+
+        // To keep listing creates supplier-only
+        given(jwtService.parse("customer-token"))
+                .willReturn(new AuthenticatedUser(9L, "bob@example.com",
+                        Role.CUSTOMER));
+        mockMvc.perform(post("/api/listings")
+                .header(HttpHeaders.AUTHORIZATION,
+                        "Bearer customer-token")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(CREATE_BODY))
+                .andExpect(status().isForbidden());
+
+        verify(listingService, never()).create(any(), any(), any(),
+                any(), any(), any());
+    }
+
+    /**
      * searchPassesPriceAndPageParams - This function forwards
      * minPrice, maxPrice, page, and size on top of keyword and
      * category.

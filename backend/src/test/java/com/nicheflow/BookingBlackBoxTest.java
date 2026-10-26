@@ -359,7 +359,9 @@ class BookingBlackBoxTest {
                 .header(HttpHeaders.AUTHORIZATION, bearer(supplierToken))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                        {"title":"Kayak %s","category":"SPORTS","price":50.00}
+                        {"title":"Kayak %s","category":"SPORTS","price":50.00,\
+                        "location":"Edmonton",\
+                        "description":"A day on the river."}
                         """.formatted(UUID.randomUUID())))
                 .andExpect(status().isCreated())
                 .andReturn();

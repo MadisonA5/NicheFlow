@@ -384,7 +384,9 @@ class ListingSearchBlackBoxTest {
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                        {"title":"%s","category":"%s","price":%s}
+                        {"title":"%s","category":"%s","price":%s,\
+                        "location":"Edmonton",\
+                        "description":"A day on the river."}
                         """.formatted(title, category, price)))
                 .andExpect(status().isCreated())
                 .andReturn();
