@@ -1,7 +1,7 @@
 /**
  * This program wires AUTH-02 security: BCrypt hashing, a stateless JWT
- * filter, public health and auth endpoints, the ADM-01 admin read
- * gate, LST-01 listing writes, BK-01 booking creates,
+ * filter, public health, auth, and listing search endpoints, the
+ * ADM-01 admin read gate, LST-01 listing writes, BK-01 booking creates,
  * BK-03 booking confirms, and a 401 when no token is present so the
  * React client can tell "log in again" from "forbidden".
  * Supplier-role enforcement is proven by /api/listings.
@@ -113,9 +113,9 @@ public class SecurityConfig {
 
     /**
      * authorizeHttpRequests - This function opens GET /health and the
-     * two auth POSTs, keeps the ADM-01 admin read gate, limits
-     * listing writes to suppliers, booking creates and confirms to
-     * customers, and booking cancels to a logged-in customer,
+     * two auth POSTs and public listing search, keeps the ADM-01
+     * admin read gate, limits listing writes to suppliers and booking
+     * creates and confirms to customers, and booking cancels to a logged-in customer,
      * supplier, or admin. Every other request requires a login.
      *
      * Parameters:
@@ -126,6 +126,9 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/health").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/auth/register",
                         "/api/auth/login").permitAll()
+                // Visitors may browse active listings; listing writes
+                // remain supplier-only below.
+                .requestMatchers(HttpMethod.GET, "/api/listings").permitAll()
                 // ADM-01 gate. GET /api/admin/** is the real admin
                 // console, and it stays ADMIN-only.
                 .requestMatchers(HttpMethod.GET, "/api/admin/**")
