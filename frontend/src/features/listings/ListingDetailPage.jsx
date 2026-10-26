@@ -41,9 +41,6 @@ function ListingDetailPage() {
                             Check dates
                         </Link>
                     </div>
-                    <p className="preview-note">
-                        Sample listing preview — booking isn’t connected yet.
-                    </p>
                 </div>
             </article>
         </main>

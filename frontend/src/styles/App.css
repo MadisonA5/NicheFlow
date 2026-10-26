@@ -10,6 +10,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 28px;
   border-bottom: 1px solid #eeeee7;
 }
 
@@ -42,10 +43,20 @@
 
 .main-nav {
   display: flex;
+  align-items: center;
   gap: 34px;
   color: #606359;
   font-size: 14px;
   font-weight: 550;
+  white-space: nowrap;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  white-space: nowrap;
 }
 
 .main-nav a:hover,
@@ -67,8 +78,21 @@
 .sign-in-button {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   padding: 11px 20px;
   font-size: 14px;
+}
+
+.header-action-secondary {
+  border: 1px solid #dfe4da;
+  color: #466b51;
+  background: #fffefa;
+}
+
+.header-action-secondary:hover {
+  border-color: #bfcdbd;
+  color: #355840;
+  background: #f2f4ec;
 }
 
 .sign-in-button:hover,
@@ -792,7 +816,9 @@ h2 {
   font-weight: 650;
 }
 
-.auth-field input {
+.auth-field input,
+.auth-field select,
+.auth-field textarea {
   width: 100%;
   min-height: 46px;
   padding: 10px 12px;
@@ -804,9 +830,227 @@ h2 {
   font-size: 14px;
 }
 
-.auth-field input:focus {
+.auth-field textarea {
+  resize: vertical;
+}
+
+.auth-field input:focus,
+.auth-field select:focus,
+.auth-field textarea:focus {
   outline: 2px solid #64806a;
   outline-offset: 1px;
+}
+
+.create-listing-card {
+  width: min(100%, 620px);
+}
+
+.create-listing-form {
+  margin-top: 24px;
+}
+
+.create-listing-success {
+  margin-top: 24px;
+  display: grid;
+  gap: 12px;
+}
+
+.create-listing-success h2,
+.create-listing-success p {
+  margin: 0;
+}
+
+.create-listing-success .booking-link {
+  width: fit-content;
+  margin-top: 8px;
+}
+
+.account-page {
+  width: min(920px, calc(100% - 48px));
+  min-height: calc(100vh - 160px);
+  margin: 0 auto;
+  padding: 42px 0 72px;
+}
+
+.account-heading {
+  margin-bottom: 36px;
+}
+
+.account-heading h1 {
+  margin: 12px 0 6px;
+}
+
+.account-email {
+  margin: 0;
+  color: #73756b;
+}
+
+.account-section {
+  margin: 0 0 36px;
+}
+
+.account-section > h2,
+.account-section-heading h2 {
+  margin-bottom: 18px;
+}
+
+.account-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.account-list {
+  display: grid;
+  gap: 12px;
+}
+
+.account-item {
+  padding: 18px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  border: 1px solid #eeeee7;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.account-item h3 {
+  margin: 4px 0;
+  font-size: 17px;
+}
+
+.account-item p {
+  margin: 4px 0 0;
+  color: #73756b;
+  font-size: 14px;
+}
+
+.account-item .listing-category {
+  color: #466b51;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.account-status {
+  flex: 0 0 auto;
+  padding: 6px 10px;
+  border-radius: 999px;
+  color: #5f6259;
+  background: #f2f4ec;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.account-status.active {
+  color: #355840;
+  background: #e4f0e3;
+}
+
+.account-listing-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.account-listing-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.account-action-button {
+  min-height: 36px;
+  padding: 7px 12px;
+  border: 1px solid #dfe4da;
+  border-radius: 999px;
+  color: #466b51;
+  background: #fffefa;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.account-action-button:hover {
+  background: #f2f4ec;
+}
+
+.account-action-button.danger {
+  border-color: #ead1c8;
+  color: #9b4636;
+}
+
+.account-action-button.danger:hover {
+  background: #fbefeb;
+}
+
+.account-action-button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.account-edit-form {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.account-edit-form .auth-field:last-of-type,
+.account-edit-form .account-listing-actions {
+  grid-column: 1 / -1;
+}
+
+.account-deactivate-confirm {
+  display: grid;
+  justify-items: end;
+  gap: 8px;
+}
+
+.account-deactivate-confirm p {
+  margin: 0;
+  font-size: 12px;
+  text-align: right;
+}
+
+@media (max-width: 600px) {
+  .account-page {
+    width: min(100% - 36px, 920px);
+  }
+
+  .account-item {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 16px;
+  }
+
+  .account-listing-controls {
+    width: 100%;
+    align-items: flex-start;
+  }
+
+  .account-deactivate-confirm {
+    justify-items: start;
+  }
+
+  .account-deactivate-confirm p {
+    text-align: left;
+  }
+
+  .account-edit-form {
+    grid-template-columns: 1fr;
+  }
+
+  .account-edit-form .auth-field:last-of-type,
+  .account-edit-form .account-listing-actions {
+    grid-column: auto;
+  }
 }
 
 .auth-inline-link {
@@ -851,13 +1095,42 @@ h2 {
 }
 
 @media (max-width: 700px) {
-  .site-header,
   main {
     width: calc(100% - 36px);
   }
 
   .site-header {
+    width: calc(100% - 36px);
     min-height: 70px;
+    flex-wrap: wrap;
+    gap: 10px 16px;
+    padding: 12px 0;
+  }
+
+  .site-header .brand-logo {
+    width: 150px;
+  }
+
+  .header-actions {
+    flex: 1 1 auto;
+    gap: 7px;
+  }
+
+  .header-actions .sign-in-button {
+    padding: 9px 12px;
+    font-size: 12px;
+  }
+
+  .header-actions .header-action-primary {
+    order: 0;
+  }
+
+  .header-actions .header-action-secondary {
+    order: 1;
+  }
+
+  .main-nav {
+    display: none;
   }
 
   .auth-header {
@@ -987,6 +1260,19 @@ h2 {
 }
 
 @media (max-width: 430px) {
+  .site-header {
+    align-items: flex-start;
+  }
+
+  .site-header .brand-logo {
+    width: 132px;
+  }
+
+  .header-actions {
+    flex-basis: 100%;
+    justify-content: flex-end;
+  }
+
   .listing-controls {
     grid-template-columns: 1fr;
   }

@@ -2,7 +2,10 @@ import {useEffect, useState} from 'react'
 import {BrowserRouter, Link, Navigate, Route, Routes} from 'react-router-dom'
 import nicheFlowLogo from '../assets/nicheflow logo1.png'
 import AuthPage from '../features/auth/AuthPage'
+import {getSession, signOut} from '../features/auth/authDataSource'
+import AccountPage from '../features/account/AccountPage'
 import BookingPage from '../features/listings/BookingPage'
+import CreateListingPage from '../features/listings/CreateListingPage'
 import ListingCard from '../features/listings/ListingCard'
 import ListingDetailPage from '../features/listings/ListingDetailPage'
 import {getListings} from '../features/listings/listingsDataSource'
@@ -11,6 +14,7 @@ import SearchBar from '../features/search/SearchBar'
 import '../styles/App.css'
 
 function HomePage() {
+    const [session, setSession] = useState(getSession)
     const [listings, setListings] = useState([])
     const [isLoading, setIsLoading] = useState(true)
     const [loadError, setLoadError] = useState('')
@@ -50,8 +54,8 @@ function HomePage() {
             .then((results) => {
                 if (isCurrent) setListings(results)
             })
-            .catch(() => {
-                if (isCurrent) setLoadError('Listings could not be loaded. Please try again.')
+            .catch((error) => {
+                if (isCurrent) setLoadError(error.message)
             })
             .finally(() => {
                 if (isCurrent) setIsLoading(false)
@@ -101,9 +105,34 @@ function HomePage() {
                     <a href="#how-it-works">How it works</a>
                 </nav>
 
-                <Link className="sign-in-button" to="/sign-in">
-                    Sign in
-                </Link>
+                <div className="header-actions">
+                    {session ? (
+                        <>
+                            {session.user.role === 'SUPPLIER' && (
+                                <Link className="sign-in-button header-action-primary" to="/listings/new">
+                                    Create listing
+                                </Link>
+                            )}
+                            <Link className="sign-in-button header-action-secondary" to="/account">
+                                My account
+                            </Link>
+                            <button
+                                className="sign-in-button header-action-secondary"
+                                type="button"
+                                onClick={() => {
+                                    signOut()
+                                    setSession(null)
+                                }}
+                            >
+                                Sign out
+                            </button>
+                        </>
+                    ) : (
+                        <Link className="sign-in-button header-action-primary" to="/sign-in">
+                            Sign in
+                        </Link>
+                    )}
+                </div>
             </header>
 
             <main>
@@ -239,6 +268,8 @@ function App() {
                 <Route path="/sign-in" element={<AuthPage mode="sign-in"/>}/>
                 <Route path="/sign-up" element={<AuthPage mode="sign-up"/>}/>
                 <Route path="/forgot-password" element={<AuthPage mode="forgot-password"/>}/>
+                <Route path="/account" element={<AccountPage/>}/>
+                <Route path="/listings/new" element={<CreateListingPage/>}/>
                 <Route path="/listings/:listingId" element={<ListingDetailPage/>}/>
                 <Route path="/listings/:listingId/book" element={<BookingPage/>}/>
                 <Route path="*" element={<Navigate to="/" replace/>}/>

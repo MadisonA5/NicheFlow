@@ -20,6 +20,35 @@ import com.nicheflow.model.Booking;
 public interface BookingRepository extends JpaRepository<Booking, Long> {
 
     /**
+     * Loads a customer's booking history with listing details available
+     * while the response DTO is mapped.
+     */
+    @Query("""
+            SELECT booking FROM Booking booking
+            JOIN FETCH booking.listing listing
+            JOIN FETCH listing.supplier
+            JOIN FETCH booking.customer
+            WHERE booking.customer.id = :customerId
+            ORDER BY booking.startTime DESC
+            """)
+    List<Booking> findAllForCustomer(
+            @Param("customerId") Long customerId);
+
+    /**
+     * Loads booking requests for listings owned by the supplier.
+     */
+    @Query("""
+            SELECT booking FROM Booking booking
+            JOIN FETCH booking.listing listing
+            JOIN FETCH listing.supplier
+            JOIN FETCH booking.customer
+            WHERE listing.supplier.id = :supplierId
+            ORDER BY booking.startTime DESC
+            """)
+    List<Booking> findAllForSupplier(
+            @Param("supplierId") Long supplierId);
+
+    /**
      * findByListingId - This function returns every booking stored
      * for one listing so a caller can see how many attempts
      * actually persisted.

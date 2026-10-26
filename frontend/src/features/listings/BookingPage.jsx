@@ -1,5 +1,7 @@
 import {useState} from 'react'
 import {Link, useParams} from 'react-router-dom'
+import {getSession} from '../auth/authDataSource'
+import {createBooking} from './bookingsDataSource'
 import useListing from './useListing'
 
 function getToday() {
@@ -22,8 +24,10 @@ function BookingPage() {
     const {listing, isLoading, loadError} = useListing(listingId)
     const [checkIn, setCheckIn] = useState('')
     const [checkOut, setCheckOut] = useState('')
-    const [guestName, setGuestName] = useState('')
     const [message, setMessage] = useState('')
+    const [booking, setBooking] = useState(null)
+    const [isSubmitting, setIsSubmitting] = useState(false)
+    const session = getSession()
     const rentalDays = getRentalDays(checkIn, checkOut)
 
     if (isLoading) {
@@ -38,11 +42,25 @@ function BookingPage() {
         )
     }
 
-    function handleSubmit(event) {
+    async function handleSubmit(event) {
         event.preventDefault()
-        setMessage(
-            'This is a booking preview only. No reservation was created and no information was sent.',
-        )
+        setMessage('')
+        setBooking(null)
+        setIsSubmitting(true)
+
+        try {
+            const createdBooking = await createBooking({
+                listingId: listing.id,
+                checkIn,
+                checkOut,
+            })
+            setBooking(createdBooking)
+            setMessage(`Booking request submitted. Its current status is ${createdBooking.status.toLowerCase()}.`)
+        } catch (error) {
+            setMessage(error.message)
+        } finally {
+            setIsSubmitting(false)
+        }
     }
 
     return (
@@ -57,22 +75,22 @@ function BookingPage() {
                     <p className="auth-description">
                         Choose your dates to see an estimated total.
                     </p>
-                    <p className="preview-note">
-                        Preview only — availability and reservations aren’t connected.
-                    </p>
+                    {!session ? (
+                        <p className="preview-note">
+                            Sign in with a customer account to request this booking.{' '}
+                            <Link to="/sign-in">Sign in</Link>
+                        </p>
+                    ) : session.user.role !== 'CUSTOMER' ? (
+                        <p className="preview-note">
+                            Only customer accounts can request bookings.
+                        </p>
+                    ) : (
+                        <p className="preview-note">
+                            Submitting creates a pending request. Payment isn’t connected yet.
+                        </p>
+                    )}
 
                     <form className="booking-form" onSubmit={handleSubmit}>
-                        <label className="auth-field">
-                            <span>Your name</span>
-                            <input
-                                name="guestName"
-                                type="text"
-                                autoComplete="name"
-                                value={guestName}
-                                onChange={(event) => setGuestName(event.target.value)}
-                                required
-                            />
-                        </label>
                         <div className="booking-dates">
                             <label className="auth-field">
                                 <span>Check-in</span>
@@ -81,6 +99,7 @@ function BookingPage() {
                                     type="date"
                                     min={getToday()}
                                     value={checkIn}
+                                    disabled={Boolean(booking)}
                                     onChange={(event) => {
                                         setCheckIn(event.target.value)
                                         setMessage('')
@@ -95,6 +114,7 @@ function BookingPage() {
                                     type="date"
                                     min={checkIn || getToday()}
                                     value={checkOut}
+                                    disabled={Boolean(booking)}
                                     onChange={(event) => {
                                         setCheckOut(event.target.value)
                                         setMessage('')
@@ -111,12 +131,19 @@ function BookingPage() {
                         <button
                             className="auth-submit-button"
                             type="submit"
-                            disabled={rentalDays === 0}
+                            disabled={rentalDays === 0 || !session ||
+                                session.user.role !== 'CUSTOMER' || isSubmitting || Boolean(booking)}
                         >
-                            Continue
+                            {isSubmitting ? 'Submitting…' : booking ? 'Request submitted' : 'Request booking'}
                         </button>
                     </form>
-                    {message && <p className="auth-status" role="status">{message}</p>}
+                    {message && (
+                        <p className={booking ? 'auth-status' : 'booking-validation'}
+                            role={booking ? 'status' : 'alert'}>
+                            {message}
+                            {booking && ` (Request #${booking.id})`}
+                        </p>
+                    )}
                 </section>
 
                 <aside className="booking-summary" aria-label="Booking estimate">

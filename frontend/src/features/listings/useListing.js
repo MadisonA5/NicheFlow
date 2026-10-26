@@ -19,9 +19,9 @@ function useListing(listingId) {
                     setLoadError('This listing could not be found.')
                 }
             })
-            .catch(() => {
+            .catch((error) => {
                 if (isCurrent) {
-                    setLoadError('Listings could not be loaded. Please try again.')
+                    setLoadError(error.message)
                 }
             })
             .finally(() => {

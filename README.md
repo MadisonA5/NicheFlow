@@ -20,9 +20,9 @@ Full feature breakdown, prioritized with MoSCoW and mapped to requirement IDs fo
 
 | ID | Feature | Capability and testing focus |
 |---|---|---|
-| AUTH-01 | Registration and login | Email and password sign-up with secure password hashing and session or token management. Tests cover invalid credentials, expired sessions, and duplicate accounts. |
-| AUTH-02 | Role-based access control | Customer, supplier, and admin roles. Tests cover privilege escalation attempts (e.g., a customer calling supplier or admin endpoints). |
-| LST-01 | Supplier listing management | Suppliers create, edit, and deactivate listings (title, category, price, availability slots). Tests cover input validation and ownership checks. |
+| AUTH-01 | Registration and login | Email and password sign-up as a customer or supplier, with secure password hashing and session or token management. Admin accounts are not self-registered. Tests cover invalid credentials, expired sessions, and duplicate accounts. |
+| AUTH-02 | Role-based access control | Customer, supplier, and admin roles. The account page shows each customer’s bookings and each supplier’s listings and bookings. Tests cover privilege escalation attempts (e.g., a customer calling supplier or admin endpoints). |
+| LST-01 | Supplier listing management | Suppliers create, edit, and deactivate listings (title, category, price, availability slots) and review their listings and booking requests from the account page. Tests cover input validation and ownership checks. |
 | LST-02 | Browse and basic search | Keyword and category search with price filters. Tests cover empty results, special characters, and pagination boundaries. |
 | BK-01 | Booking with availability check | Customers book an open slot. The system blocks double-booking, so if two customers book the last slot at once, exactly one succeeds. Tests include concurrent requests. |
 | BK-02 | Booking state machine | Lifecycle of pending → confirmed → completed, plus cancelled. Tests cover every valid transition and reject every invalid one. |

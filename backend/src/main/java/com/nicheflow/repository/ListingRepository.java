@@ -10,6 +10,7 @@
 package com.nicheflow.repository;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -20,6 +21,18 @@ import org.springframework.data.repository.query.Param;
 import com.nicheflow.model.Listing;
 
 public interface ListingRepository extends JpaRepository<Listing, Long> {
+
+    /**
+     * Loads every listing owned by the specified supplier, including
+     * inactive listings for the supplier account page.
+     */
+    @Query("""
+            SELECT listing FROM Listing listing
+            JOIN FETCH listing.supplier
+            WHERE listing.supplier.id = :supplierId
+            ORDER BY listing.id DESC
+            """)
+    List<Listing> findAllBySupplierId(@Param("supplierId") Long supplierId);
 
     /**
      * searchActive - This function returns one page of active
