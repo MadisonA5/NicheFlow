@@ -62,6 +62,19 @@ Full feature breakdown, prioritized with MoSCoW and mapped to requirement IDs fo
 
 This README is maintained as the living specification for the project and will be kept current through the term as requirements evolve.
 
+## Postgres
+
+Before starting the backend and frontend servers, ensure the postgres database server is on.
+
+## Running the Backend
+
+The springboot backend lives in `backend/`. From the repository root run:
+
+```bash
+cd backend
+.\mvnw.cmd spring-boot:run
+```
+
 ## Running the Frontend
 
 The React frontend lives in `frontend/`. From the repository root, run:
