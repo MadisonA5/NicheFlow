@@ -629,6 +629,12 @@ describe('NicheFlow landing page', () => {
             user: {id: 9, email: 'neighbor@example.com', role: 'CUSTOMER'},
         }))
         const fetchMock = vi.fn((url) => {
+            if (url.startsWith('/api/bookings/availability/')) {
+                return Promise.resolve({
+                    ok: true,
+                    json: async () => [],
+                })
+            }
             if (url === '/api/bookings') {
                 return Promise.resolve({
                     ok: true,
@@ -663,12 +669,12 @@ describe('NicheFlow landing page', () => {
         const formatDate = (date) =>
             `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 
-        fireEvent.change(screen.getByLabelText('Check-in'), {
-            target: {value: formatDate(tomorrow)},
-        })
-        fireEvent.change(screen.getByLabelText('Check-out'), {
-            target: {value: formatDate(checkout)},
-        })
+        fireEvent.click(await screen.findByRole('button', {
+            name: formatDate(tomorrow),
+        }))
+        fireEvent.click(screen.getByRole('button', {
+            name: formatDate(checkout),
+        }))
 
         expect(screen.getByText('$38 × 2 days')).toBeInTheDocument()
         expect(
@@ -690,5 +696,49 @@ describe('NicheFlow landing page', () => {
                 endTime: `${formatDate(checkout)}T00:00:00Z`,
             }),
         }))
+    })
+
+    it('marks reserved booking dates unavailable while leaving the checkout boundary open', async () => {
+        localStorage.setItem('nicheflow.session', JSON.stringify({
+            token: 'signed.jwt.token',
+            user: {id: 9, email: 'neighbor@example.com', role: 'CUSTOMER'},
+        }))
+        const tomorrow = new Date()
+        tomorrow.setDate(tomorrow.getDate() + 1)
+        const checkoutBoundary = new Date(tomorrow)
+        checkoutBoundary.setDate(checkoutBoundary.getDate() + 2)
+        const formatDate = (date) =>
+            `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+        const fetchMock = vi.fn((url) => Promise.resolve({
+            ok: true,
+            json: async () => url.startsWith('/api/bookings/availability/')
+                ? [{
+                    startTime: `${formatDate(tomorrow)}T00:00:00Z`,
+                    endTime: `${formatDate(checkoutBoundary)}T00:00:00Z`,
+                }]
+                : {items: listings.map((listing) => ({...listing, active: true}))},
+        }))
+        vi.stubGlobal('fetch', fetchMock)
+        render(<App/>)
+        fireEvent.click(await screen.findByRole('link', {name: 'Sunny garden studio'}))
+        fireEvent.click(await screen.findByRole('link', {name: 'Check dates'}))
+
+        const unavailableDay = await screen.findByRole('button', {
+            name: `${formatDate(tomorrow)}, unavailable`,
+        })
+        expect(unavailableDay).toBeDisabled()
+
+        const boundaryDay = screen.getByRole('button', {
+            name: formatDate(checkoutBoundary),
+        })
+        expect(boundaryDay).toBeEnabled()
+        fireEvent.click(boundaryDay)
+        const displayDate = new Intl.DateTimeFormat(undefined, {
+            dateStyle: 'medium',
+            timeZone: 'UTC',
+        }).format(new Date(`${formatDate(checkoutBoundary)}T00:00:00Z`))
+        expect(screen.getByText(displayDate, {
+            selector: 'strong',
+        })).toBeInTheDocument()
     })
 })

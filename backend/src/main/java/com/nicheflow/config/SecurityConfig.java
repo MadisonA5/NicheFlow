@@ -129,6 +129,8 @@ public class SecurityConfig {
                 // Visitors may browse active listings; listing writes
                 // remain supplier-only below.
                 .requestMatchers(HttpMethod.GET, "/api/listings").permitAll()
+                .requestMatchers(HttpMethod.GET,
+                        "/api/bookings/availability/*").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/account")
                         .authenticated()
                 // ADM-01 gate. GET /api/admin/** is the real admin

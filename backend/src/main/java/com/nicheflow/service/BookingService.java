@@ -22,6 +22,7 @@ package com.nicheflow.service;
 import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.time.Instant;
+import java.util.List;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.PessimisticLockingFailureException;
@@ -34,6 +35,7 @@ import com.nicheflow.exception.BookingNotFoundException;
 import com.nicheflow.exception.InvalidBookingException;
 import com.nicheflow.exception.InvalidBookingTransitionException;
 import com.nicheflow.exception.ListingNotFoundException;
+import com.nicheflow.dto.BookingAvailabilityResponse;
 import com.nicheflow.model.Booking;
 import com.nicheflow.model.BookingStatus;
 import com.nicheflow.model.Listing;
@@ -120,6 +122,24 @@ public class BookingService {
 
         return insertPendingBooking(listing, customer, startTime,
                 endTime);
+    }
+
+    /**
+     * getUnavailablePeriods - This function returns date windows
+     * reserved by pending, accepted, or confirmed bookings.
+     *
+     * Parameters:
+     * listingId - The listing whose booked dates are requested
+     *
+     * Return - The active booking windows, excluding cancellations
+     */
+    @Transactional(readOnly = true)
+    public List<BookingAvailabilityResponse> getUnavailablePeriods(
+            Long listingId) {
+        return bookingRepository.findUnavailableBookingsByListingId(
+                        listingId).stream()
+                .map(BookingAvailabilityResponse::from)
+                .toList();
     }
 
     /**

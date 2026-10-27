@@ -1,5 +1,5 @@
 import {afterEach, describe, expect, it, vi} from 'vitest'
-import {createBooking} from './bookingsDataSource'
+import {createBooking, getUnavailablePeriods} from './bookingsDataSource'
 
 describe('booking data source', () => {
     afterEach(() => {
@@ -43,6 +43,31 @@ describe('booking data source', () => {
                 endTime: '2026-11-03T00:00:00Z',
             }),
         })
+    })
+
+    it('loads public unavailable booking periods for a listing', async () => {
+        const periods = [{
+            startTime: '2026-11-01T00:00:00Z',
+            endTime: '2026-11-03T00:00:00Z',
+        }]
+        const fetchMock = vi.fn().mockResolvedValue({
+            ok: true,
+            json: async () => periods,
+        })
+        vi.stubGlobal('fetch', fetchMock)
+
+        await expect(getUnavailablePeriods('3')).resolves.toEqual(periods)
+        expect(fetchMock).toHaveBeenCalledWith('/api/bookings/availability/3')
+    })
+
+    it('rejects a malformed availability response', async () => {
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+            ok: true,
+            json: async () => [{startTime: 'not-a-date'}],
+        }))
+
+        await expect(getUnavailablePeriods(3))
+            .rejects.toThrow('availability response')
     })
 
     it('shows the API detail when a date range conflicts', async () => {

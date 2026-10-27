@@ -595,6 +595,130 @@ h2 {
   gap: 14px;
 }
 
+.booking-calendar {
+  padding: 16px;
+  border: 1px solid #eeeee7;
+  border-radius: 14px;
+  background: #fffefa;
+}
+
+.booking-calendar-heading {
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.booking-calendar-heading h2 {
+  margin: 0;
+  font-size: 17px;
+}
+
+.booking-calendar-heading .account-action-button {
+  min-width: 38px;
+  min-height: 38px;
+  padding: 0 10px;
+}
+
+.booking-calendar-heading .account-action-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.booking-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.booking-calendar-weekdays {
+  margin-bottom: 6px;
+  color: #73756b;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.booking-calendar-weekdays span {
+  padding: 6px 0;
+}
+
+.booking-calendar-day {
+  min-width: 0;
+  aspect-ratio: 1;
+  border: 0;
+  border-radius: 50%;
+  color: #343a32;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+
+.booking-calendar-day:hover:not(:disabled) {
+  background: #edf2e8;
+}
+
+.booking-calendar-day.unavailable,
+.booking-calendar-day.unavailable:disabled {
+  color: #9b4636;
+  background: #f7e5df;
+  text-decoration: line-through;
+  cursor: not-allowed;
+}
+
+.booking-calendar-day:disabled:not(.unavailable) {
+  color: #b9bbb3;
+  cursor: not-allowed;
+}
+
+.booking-calendar-day.selected {
+  color: #fffefa;
+  background: #466b51;
+  text-decoration: none;
+}
+
+.booking-calendar-day.in-range:not(.selected) {
+  border-radius: 0;
+  background: #e4f0e3;
+}
+
+.booking-calendar-selection {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.booking-calendar-selection p {
+  margin: 0;
+  color: #73756b;
+  font-size: 12px;
+}
+
+.booking-calendar-selection strong {
+  margin-top: 4px;
+  display: block;
+  color: #343a32;
+  font-size: 14px;
+}
+
+.booking-calendar-legend {
+  margin: 12px 0 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #73756b;
+  font-size: 12px;
+}
+
+.booking-calendar-legend span {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  background: #f7e5df;
+}
+
 .booking-validation {
   margin: -8px 0 0;
   color: #9b342e;

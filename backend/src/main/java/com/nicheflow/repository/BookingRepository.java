@@ -49,6 +49,22 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
             @Param("supplierId") Long supplierId);
 
     /**
+     * Loads active booking windows for the public availability view.
+     * Cancelled bookings do not reserve dates.
+     */
+    @Query("""
+            SELECT booking FROM Booking booking
+            WHERE booking.listing.id = :listingId
+              AND booking.status IN (
+                  com.nicheflow.model.BookingStatus.PENDING,
+                  com.nicheflow.model.BookingStatus.ACCEPTED,
+                  com.nicheflow.model.BookingStatus.CONFIRMED)
+            ORDER BY booking.startTime
+            """)
+    List<Booking> findUnavailableBookingsByListingId(
+            @Param("listingId") Long listingId);
+
+    /**
      * findByListingId - This function returns every booking stored
      * for one listing so a caller can see how many attempts
      * actually persisted.

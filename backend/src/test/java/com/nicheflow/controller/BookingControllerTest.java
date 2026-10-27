@@ -13,6 +13,7 @@ package com.nicheflow.controller;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,6 +29,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -37,6 +39,7 @@ import com.nicheflow.TestBookings;
 import com.nicheflow.TestListings;
 import com.nicheflow.TestUsers;
 import com.nicheflow.config.SecurityConfig;
+import com.nicheflow.dto.BookingAvailabilityResponse;
 import com.nicheflow.exception.BookingAccessDeniedException;
 import com.nicheflow.exception.BookingConflictException;
 import com.nicheflow.exception.GlobalExceptionHandler;
@@ -75,6 +78,23 @@ class BookingControllerTest {
 
     @MockitoBean
     private JwtService jwtService;
+
+    @Test
+    void availabilityIsPublicAndReturnsOnlyDateRanges() throws Exception {
+        given(bookingService.getUnavailablePeriods(3L))
+                .willReturn(List.of(
+                        new BookingAvailabilityResponse(START, END)));
+
+        mockMvc.perform(get("/api/bookings/availability/3"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].startTime")
+                        .value("2026-11-01T15:00:00Z"))
+                .andExpect(jsonPath("$[0].endTime")
+                        .value("2026-11-01T16:00:00Z"))
+                .andExpect(jsonPath("$[0].customerId").doesNotExist());
+
+        verify(bookingService).getUnavailablePeriods(3L);
+    }
 
     /**
      * createPassesTheJwtPrincipalIntoTheService - This function

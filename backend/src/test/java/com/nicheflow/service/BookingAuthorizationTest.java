@@ -12,6 +12,7 @@ package com.nicheflow.service;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -31,6 +32,7 @@ import static org.mockito.Mockito.verify;
 import com.nicheflow.TestBookings;
 import com.nicheflow.TestListings;
 import com.nicheflow.TestUsers;
+import com.nicheflow.dto.BookingAvailabilityResponse;
 import com.nicheflow.exception.BookingAccessDeniedException;
 import com.nicheflow.model.Booking;
 import com.nicheflow.model.BookingStatus;
@@ -87,6 +89,17 @@ class BookingAuthorizationTest {
 
     @InjectMocks
     private BookingService bookingService;
+
+    @Test
+    void getUnavailablePeriodsReturnsOnlyBookingTimeWindows() {
+        Booking pending = TestBookings.withId(BOOKING_ID, listing, customer,
+                START, END);
+        given(bookingRepository.findUnavailableBookingsByListingId(3L))
+                .willReturn(List.of(pending));
+
+        assertThat(bookingService.getUnavailablePeriods(3L))
+                .containsExactly(new BookingAvailabilityResponse(START, END));
+    }
 
     /**
      * customerCanConfirmTheirOwnPendingBooking - This function stores

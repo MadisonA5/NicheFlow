@@ -10,9 +10,12 @@
  */
 package com.nicheflow.controller;
 
+import java.util.List;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -23,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.nicheflow.dto.BookingRequest;
 import com.nicheflow.dto.BookingResponse;
+import com.nicheflow.dto.BookingAvailabilityResponse;
 import com.nicheflow.model.Booking;
 import com.nicheflow.security.AuthenticatedUser;
 import com.nicheflow.service.BookingService;
@@ -46,6 +50,21 @@ public class BookingController {
      */
     public BookingController(BookingService bookingService) {
         this.bookingService = bookingService;
+    }
+
+    /**
+     * getUnavailablePeriods - This function exposes reserved date
+     * windows without exposing customer or booking details.
+     *
+     * Parameters:
+     * listingId - The listing whose unavailable dates are requested
+     *
+     * Return - Pending, accepted, and confirmed date windows
+     */
+    @GetMapping("/availability/{listingId}")
+    public List<BookingAvailabilityResponse> getUnavailablePeriods(
+            @PathVariable @Min(1) Long listingId) {
+        return bookingService.getUnavailablePeriods(listingId);
     }
 
     /**
