@@ -66,6 +66,12 @@ This README is maintained as the living specification for the project and will b
 
 Before starting the backend and frontend servers, ensure the postgres database server is on.
 
+Docker command to run postgres from a docker image:
+
+```
+docker run -p 5432:5432 -e POSTGRES_USER=nicheflow -e POSTGRES_PASSWORD=nicheflow postgres:latest 
+```
+
 ## Running the Backend
 
 The springboot backend lives in `backend/`. From the repository root run:
@@ -86,6 +92,7 @@ npm run dev
 ```
 
 This starts the frontend development server. Run `npm run build` from `frontend/` to create a production build. The frontend and Spring Boot backend run separately during development.
+
 
 ## Tech Stack
 
