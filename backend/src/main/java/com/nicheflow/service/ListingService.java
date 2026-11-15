@@ -153,6 +153,23 @@ public class ListingService {
      *
      * Return - One page of matching active listings
      */
+    /**
+     * findActive - This function loads one active listing by id so the
+     * listing detail and booking pages work for every listing, not
+     * only those on the first search page. Visitors may call it.
+     *
+     * Parameters:
+     * listingId - The listing to load
+     *
+     * Return - The active listing
+     */
+    @Transactional(readOnly = true)
+    public Listing findActive(Long listingId) {
+        // To treat a hidden listing the same as a missing one
+        return listingRepository.findActiveById(listingId)
+                .orElseThrow(() -> new ListingNotFoundException(listingId));
+    }
+
     @Transactional(readOnly = true)
     public Page<Listing> search(String keyword, String category,
             BigDecimal minPrice, BigDecimal maxPrice, Integer page,

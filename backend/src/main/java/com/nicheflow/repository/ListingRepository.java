@@ -11,6 +11,7 @@ package com.nicheflow.repository;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -33,6 +34,14 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
             ORDER BY listing.id DESC
             """)
     List<Listing> findAllBySupplierId(@Param("supplierId") Long supplierId);
+
+    @Query("""
+            SELECT listing FROM Listing listing
+            JOIN FETCH listing.supplier
+            WHERE listing.id = :listingId
+              AND listing.active = true
+            """)
+    Optional<Listing> findActiveById(@Param("listingId") Long listingId);
 
     /**
      * searchActive - This function returns one page of active
