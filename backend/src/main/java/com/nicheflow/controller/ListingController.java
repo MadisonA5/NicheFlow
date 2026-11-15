@@ -125,6 +125,21 @@ public class ListingController {
     }
 
     /**
+     * get - This function returns one active listing by id so the
+     * detail and booking pages can load any listing, including those
+     * past the first search page. Visitors may browse without a login.
+     *
+     * Parameters:
+     * listingId - The listing to load; must be 1 or greater
+     *
+     * Return - The active listing, or 404 when missing or hidden
+     */
+    @GetMapping("/{listingId}")
+    public ListingResponse get(@PathVariable @Min(1) Long listingId) {
+        return ListingResponse.from(listingService.findActive(listingId));
+    }
+
+    /**
      * update - This function edits a listing when the JWT caller is
      * its supplier. Any other authenticated user is 403.
      *
