@@ -78,6 +78,81 @@ describe('getListings', () => {
     })
 })
 
+describe('getListings across pages', () => {
+    afterEach(() => {
+        localStorage.clear()
+        vi.unstubAllGlobals()
+    })
+
+    function listing(id) {
+        return {
+            id,
+            title: `Listing ${id}`,
+            category: 'Workspace',
+            price: 10,
+            location: 'Camrose',
+            description: `Listing ${id}`,
+            supplierId: 1,
+            active: true,
+        }
+    }
+
+    it('loads every page and returns all listings in order', async () => {
+        const fetchMock = vi.fn((url) => {
+            const page = url === '/api/listings' ? 0 : 1
+            const ids = page === 0
+                ? Array.from({length: 20}, (_, index) => index + 1)
+                : [21]
+            return Promise.resolve({
+                ok: true,
+                json: async () => ({
+                    items: ids.map(listing),
+                    page,
+                    size: 20,
+                    totalElements: 21,
+                    totalPages: 2,
+                }),
+            })
+        })
+        vi.stubGlobal('fetch', fetchMock)
+
+        const results = await getListings()
+
+        expect(results).toHaveLength(21)
+        expect(results.at(-1)).toMatchObject({id: 21, title: 'Listing 21'})
+        expect(fetchMock).toHaveBeenCalledTimes(2)
+        expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/listings',
+            {headers: undefined})
+        expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/listings?page=1',
+            {headers: undefined})
+    })
+
+    it('makes one request when everything fits on the first page', async () => {
+        const fetchMock = vi.fn().mockResolvedValue({
+            ok: true,
+            json: async () => ({items: [listing(1)], totalPages: 1}),
+        })
+        vi.stubGlobal('fetch', fetchMock)
+
+        await expect(getListings()).resolves.toHaveLength(1)
+        expect(fetchMock).toHaveBeenCalledTimes(1)
+    })
+
+    it('reports an error from a later page', async () => {
+        vi.stubGlobal('fetch', vi.fn((url) => Promise.resolve(
+            url === '/api/listings'
+                ? {
+                    ok: true,
+                    json: async () => ({items: [listing(1)], totalPages: 2}),
+                }
+                : {ok: false, status: 500},
+        )))
+
+        await expect(getListings()).rejects.toThrow(
+            'Listings request failed (500).')
+    })
+})
+
 describe('getListing', () => {
     afterEach(() => {
         localStorage.clear()
