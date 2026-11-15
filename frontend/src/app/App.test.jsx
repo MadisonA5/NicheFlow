@@ -112,6 +112,46 @@ describe('NicheFlow landing page', () => {
         expect(screen.getByText('1 listing found')).toBeInTheDocument()
     })
 
+    it('finds a listing that is on the second page of results', async () => {
+        // 21 active listings, served 20 per page like the real backend
+        const pagedListings = Array.from({length: 21}, (_, index) => ({
+            id: index + 1,
+            title: `Test Listing ${index + 1}`,
+            category: 'Workspace',
+            price: 10,
+            location: 'Camrose',
+            description: `Boundary test ${index + 1}`,
+            supplierId: 1,
+            active: true,
+        }))
+        vi.stubGlobal('fetch', vi.fn((url) => {
+            const page = Number(
+                new URL(url, 'http://localhost').searchParams.get('page') ?? 0)
+            return Promise.resolve({
+                ok: true,
+                json: async () => ({
+                    items: pagedListings.slice(page * 20, (page + 1) * 20),
+                    page,
+                    size: 20,
+                    totalElements: 21,
+                    totalPages: 2,
+                }),
+            })
+        }))
+        render(<App/>)
+
+        fireEvent.change(
+            screen.getByRole('searchbox', {name: 'What are you looking for?'}),
+            {target: {value: 'Test Listing 21'}},
+        )
+        fireEvent.click(screen.getByRole('button', {name: 'Search'}))
+
+        expect(
+            await screen.findByRole('heading', {name: 'Test Listing 21'}),
+        ).toBeInTheDocument()
+        expect(screen.getByText('1 listing found')).toBeInTheDocument()
+    })
+
     it('filters by location and matches it together with the keyword', async () => {
         render(<App/>)
 
