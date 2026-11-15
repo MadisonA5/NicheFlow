@@ -677,6 +677,51 @@ class ListingControllerTest {
      *
      * Return - The principal the filter will inject
      */
+    /**
+     * getWithoutATokenReturnsTheListing - This function loads one
+     * listing by id with no login, the same as public search, and
+     * expects the listing payload.
+     */
+    @Test
+    void getWithoutATokenReturnsTheListing() throws Exception {
+        User owner = TestUsers.withId(7L, "ada@example.com",
+                "$2a$10$hashed", Role.SUPPLIER);
+        Listing stored = TestListings.withId(21L, "Kayak", "SPORTS",
+                new BigDecimal("25.00"), owner);
+        given(listingService.findActive(21L)).willReturn(stored);
+
+        mockMvc.perform(get("/api/listings/21"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(21))
+                .andExpect(jsonPath("$.title").value("Kayak"))
+                .andExpect(jsonPath("$.supplierId").value(7));
+    }
+
+    /**
+     * getAMissingOrHiddenListingReturns404 - This function stubs the
+     * service's not-found error and expects HTTP 404.
+     */
+    @Test
+    void getAMissingOrHiddenListingReturns404() throws Exception {
+        given(listingService.findActive(99L))
+                .willThrow(new ListingNotFoundException(99L));
+
+        mockMvc.perform(get("/api/listings/99"))
+                .andExpect(status().isNotFound());
+    }
+
+    /**
+     * getWithANonPositiveIdReturns400 - This function sends id 0 and
+     * expects validation to reject it before the service runs.
+     */
+    @Test
+    void getWithANonPositiveIdReturns400() throws Exception {
+        mockMvc.perform(get("/api/listings/0"))
+                .andExpect(status().isBadRequest());
+
+        verify(listingService, never()).findActive(any());
+    }
+
     private AuthenticatedUser supplier(long id, String token) {
         AuthenticatedUser caller = new AuthenticatedUser(id,
                 "ada@example.com", Role.SUPPLIER);
