@@ -3,10 +3,20 @@ import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 import App from './App.jsx'
 import {listings} from '../features/listings/listings'
 
+// The detail and booking pages load one listing from /api/listings/{id}.
+function singleListingResponse(url) {
+    const match = String(url).match(/^\/api\/listings\/(\d+)$/)
+    if (!match) return null
+    const listing = listings.find((item) => String(item.id) === match[1])
+    return Promise.resolve(listing
+        ? {ok: true, status: 200, json: async () => ({...listing, active: true})}
+        : {ok: false, status: 404, json: async () => ({})})
+}
+
 describe('NicheFlow landing page', () => {
     beforeEach(() => {
         localStorage.clear()
-        vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+        vi.stubGlobal('fetch', vi.fn((url) => singleListingResponse(url) ?? Promise.resolve({
             ok: true,
             json: async () => ({
                 items: listings.map(({
@@ -27,7 +37,7 @@ describe('NicheFlow landing page', () => {
                     active: true,
                 })),
             }),
-        }))
+        })))
     })
 
     afterEach(() => {
@@ -629,6 +639,8 @@ describe('NicheFlow landing page', () => {
             user: {id: 9, email: 'neighbor@example.com', role: 'CUSTOMER'},
         }))
         const fetchMock = vi.fn((url) => {
+            const single = singleListingResponse(url)
+            if (single) return single
             if (url.startsWith('/api/bookings/availability/')) {
                 return Promise.resolve({
                     ok: true,
@@ -709,7 +721,7 @@ describe('NicheFlow landing page', () => {
         checkoutBoundary.setDate(checkoutBoundary.getDate() + 2)
         const formatDate = (date) =>
             `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
-        const fetchMock = vi.fn((url) => Promise.resolve({
+        const fetchMock = vi.fn((url) => singleListingResponse(url) ?? Promise.resolve({
             ok: true,
             json: async () => url.startsWith('/api/bookings/availability/')
                 ? [{
