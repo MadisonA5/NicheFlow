@@ -7,6 +7,32 @@ const listingArtwork = {
     events: {icon: '🍽️', color: 'lavender'},
 }
 
+function withArtwork(listing) {
+    const artwork = listingArtwork[listing.category.toLowerCase()] ?? {
+        icon: '✦',
+        color: 'sage',
+    }
+
+    return {...listing, ...artwork}
+}
+
+export async function getListing(listingId) {
+    const session = getSession()
+    const response = await fetch(`/api/listings/${listingId}`, {
+        headers: session
+            ? {Authorization: `Bearer ${session.token}`}
+            : undefined,
+    })
+    if (response.status === 404) {
+        return null
+    }
+    if (!response.ok) {
+        throw new Error(`Listing request failed (${response.status}).`)
+    }
+
+    return withArtwork(await response.json())
+}
+
 export async function getListings() {
     const session = getSession()
     const response = await fetch('/api/listings', {
@@ -23,12 +49,5 @@ export async function getListings() {
         throw new Error('Listings response was not in the expected format.')
     }
 
-    return page.items.map((listing) => {
-        const artwork = listingArtwork[listing.category.toLowerCase()] ?? {
-            icon: '✦',
-            color: 'sage',
-        }
-
-        return {...listing, ...artwork}
-    })
+    return page.items.map(withArtwork)
 }

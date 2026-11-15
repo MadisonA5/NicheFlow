@@ -1,6 +1,6 @@
 import {afterEach, describe, expect, it, vi} from 'vitest'
 import {signIn} from '../auth/authDataSource'
-import {getListings} from './listingsDataSource'
+import {getListing, getListings} from './listingsDataSource'
 
 describe('getListings', () => {
     afterEach(() => {
@@ -75,5 +75,58 @@ describe('getListings', () => {
         await expect(getListings()).rejects.toThrow(
             'Listings response was not in the expected format.',
         )
+    })
+})
+
+describe('getListing', () => {
+    afterEach(() => {
+        localStorage.clear()
+        vi.unstubAllGlobals()
+    })
+
+    it('loads one listing by id and adds presentation defaults', async () => {
+        const apiListing = {
+            id: 21,
+            title: 'Kayak rental',
+            category: 'SPORTS',
+            price: 25,
+            location: 'Calgary, AB',
+            description: 'A day on the river.',
+            supplierId: 4,
+            active: true,
+        }
+        const fetchMock = vi.fn().mockResolvedValue({
+            ok: true,
+            status: 200,
+            json: async () => apiListing,
+        })
+        vi.stubGlobal('fetch', fetchMock)
+
+        await expect(getListing('21')).resolves.toEqual(
+            {...apiListing, icon: '🚲', color: 'peach'})
+        expect(fetchMock).toHaveBeenCalledWith('/api/listings/21', {
+            headers: undefined,
+        })
+    })
+
+    it('returns null when the listing does not exist', async () => {
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+            ok: false,
+            status: 404,
+            json: async () => ({}),
+        }))
+
+        await expect(getListing('99')).resolves.toBeNull()
+    })
+
+    it('reports other HTTP errors', async () => {
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+            ok: false,
+            status: 500,
+            json: async () => ({}),
+        }))
+
+        await expect(getListing('21')).rejects.toThrow(
+            'Listing request failed (500).')
     })
 })
