@@ -35,19 +35,31 @@ export async function getListing(listingId) {
 
 export async function getListings() {
     const session = getSession()
-    const response = await fetch('/api/listings', {
-        headers: session
-            ? {Authorization: `Bearer ${session.token}`}
-            : undefined,
-    })
-    if (!response.ok) {
-        throw new Error(`Listings request failed (${response.status}).`)
+    const headers = session
+        ? {Authorization: `Bearer ${session.token}`}
+        : undefined
+    const listings = []
+    let page = 0
+    let totalPages = 1
+
+    // The backend returns 20 listings per page, so keep loading pages
+    // until every active listing has been fetched.
+    while (page < totalPages) {
+        const url = page === 0 ? '/api/listings' : `/api/listings?page=${page}`
+        const response = await fetch(url, {headers})
+        if (!response.ok) {
+            throw new Error(`Listings request failed (${response.status}).`)
+        }
+
+        const result = await response.json()
+        if (!result || !Array.isArray(result.items)) {
+            throw new Error('Listings response was not in the expected format.')
+        }
+
+        listings.push(...result.items)
+        totalPages = Number.isInteger(result.totalPages) ? result.totalPages : 1
+        page += 1
     }
 
-    const page = await response.json()
-    if (!page || !Array.isArray(page.items)) {
-        throw new Error('Listings response was not in the expected format.')
-    }
-
-    return page.items.map(withArtwork)
+    return listings.map(withArtwork)
 }
