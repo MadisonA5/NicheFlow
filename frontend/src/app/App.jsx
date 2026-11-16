@@ -8,6 +8,7 @@ import CreateListingPage from '../features/listings/CreateListingPage'
 import ListingCard from '../features/listings/ListingCard'
 import ListingDetailPage from '../features/listings/ListingDetailPage'
 import SiteHeader from '../features/navigation/SiteHeader'
+import {scrollToSection} from '../features/navigation/scrollToSection'
 import {getListings} from '../features/listings/listingsDataSource'
 import {filterListings} from '../features/search/filterListings'
 import SearchBar from '../features/search/SearchBar'
@@ -45,6 +46,16 @@ function HomePage() {
                     ? 'Name: A to Z'
                     : '',
     ].filter(Boolean)
+
+    const location = useLocation()
+
+    // To move to Explore or How it works when the header links are used,
+    // including when arriving from another page
+    useEffect(() => {
+        if (location.hash) {
+            scrollToSection(location.hash.slice(1))
+        }
+    }, [location.hash, location.key])
 
     useEffect(() => {
         let isCurrent = true
@@ -107,7 +118,7 @@ function HomePage() {
                     <SearchBar key={searchResetKey} onSearch={handleSearch}/>
                 </section>
 
-                <section className="listings-section" id="listings">
+                <section className="listings-section" id="listings" tabIndex={-1}>
                     <div className="section-heading">
                         <div>
                             <p className="eyebrow">Picked for your area</p>
@@ -200,7 +211,7 @@ function HomePage() {
                     )}
                 </section>
 
-                <section className="how-it-works" id="how-it-works">
+                <section className="how-it-works" id="how-it-works" tabIndex={-1}>
                     <p className="eyebrow">A little more local</p>
                     <h2>Good things are closer than you think.</h2>
                     <p>

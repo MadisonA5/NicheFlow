@@ -17,14 +17,14 @@ function SiteHeader() {
             </Link>
 
             <nav className="main-nav" aria-label="Main navigation">
-                <a
+                <Link
                     className={isExploring ? 'is-current' : undefined}
-                    href="/#listings"
+                    to="/#listings"
                     aria-current={isExploring ? 'true' : undefined}
                 >
                     Explore
-                </a>
-                <a href="/#how-it-works">How it works</a>
+                </Link>
+                <Link to="/#how-it-works">How it works</Link>
             </nav>
 
             <div className="header-actions">

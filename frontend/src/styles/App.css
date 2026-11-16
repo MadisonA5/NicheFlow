@@ -95,6 +95,11 @@
   background: #f2f4ec;
 }
 
+/* Sections receive focus after the header scrolls to them */
+section[tabindex="-1"]:focus {
+  outline: none;
+}
+
 /* The page or section the user is on */
 .main-nav a.is-current {
   color: #355840;

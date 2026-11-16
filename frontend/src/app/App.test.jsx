@@ -1,4 +1,4 @@
-import {fireEvent, render, screen, within} from '@testing-library/react'
+import {fireEvent, render, screen, waitFor, within} from '@testing-library/react'
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 import App from './App.jsx'
 import {listings} from '../features/listings/listings'
@@ -330,6 +330,78 @@ describe('NicheFlow landing page', () => {
             .not.toBeInTheDocument()
         expect(screen.getByRole('link', {name: 'Back to explore'}))
             .toHaveAttribute('href', '/')
+    })
+
+    it('scrolls smoothly to How it works and focuses it', async () => {
+        const scroll = vi.spyOn(Element.prototype, 'scrollIntoView')
+        render(<App/>)
+
+        fireEvent.click(within(await findSiteHeader())
+            .getByRole('link', {name: 'How it works'}))
+
+        const section = document.getElementById('how-it-works')
+        await waitFor(() => expect(document.activeElement).toBe(section))
+        expect(scroll).toHaveBeenCalledWith({behavior: 'smooth', block: 'start'})
+        expect(scroll.mock.contexts.at(-1)).toBe(section)
+        expect(window.location.hash).toBe('#how-it-works')
+        scroll.mockRestore()
+    })
+
+    it('scrolls to Explore each time it is clicked', async () => {
+        const scroll = vi.spyOn(Element.prototype, 'scrollIntoView')
+        render(<App/>)
+        const explore = within(await findSiteHeader())
+            .getByRole('link', {name: 'Explore'})
+
+        fireEvent.click(explore)
+        await waitFor(() => expect(scroll).toHaveBeenCalledTimes(1))
+        fireEvent.click(explore)
+        await waitFor(() => expect(scroll).toHaveBeenCalledTimes(2))
+
+        expect(scroll.mock.contexts.at(-1)).toBe(document.getElementById('listings'))
+        scroll.mockRestore()
+    })
+
+    it('goes home and scrolls to How it works from another page', async () => {
+        const scroll = vi.spyOn(Element.prototype, 'scrollIntoView')
+        window.history.pushState({}, '', '/listings/1')
+        render(<App/>)
+        await screen.findByRole('heading', {name: 'Sunny garden studio'})
+
+        fireEvent.click(within(await findSiteHeader())
+            .getByRole('link', {name: 'How it works'}))
+
+        expect(await screen.findByRole('heading', {name: 'Find your next favorite place.'}))
+            .toBeInTheDocument()
+        await waitFor(() => expect(document.activeElement)
+            .toBe(document.getElementById('how-it-works')))
+        expect(window.location.pathname).toBe('/')
+        expect(scroll.mock.contexts.at(-1))
+            .toBe(document.getElementById('how-it-works'))
+        scroll.mockRestore()
+    })
+
+    it('opens the home page at a section when the link is visited directly', async () => {
+        const scroll = vi.spyOn(Element.prototype, 'scrollIntoView')
+        window.history.pushState({}, '', '/#listings')
+        render(<App/>)
+
+        await waitFor(() => expect(scroll.mock.contexts.at(-1))
+            .toBe(document.getElementById('listings')))
+        scroll.mockRestore()
+    })
+
+    it('jumps instantly for users who prefer reduced motion', async () => {
+        const scroll = vi.spyOn(Element.prototype, 'scrollIntoView')
+        vi.stubGlobal('matchMedia', vi.fn().mockReturnValue({matches: true}))
+        render(<App/>)
+
+        fireEvent.click(within(await findSiteHeader())
+            .getByRole('link', {name: 'How it works'}))
+
+        await waitFor(() => expect(scroll)
+            .toHaveBeenCalledWith({behavior: 'auto', block: 'start'}))
+        scroll.mockRestore()
     })
 
     it('filters listings by keyword without case sensitivity', async () => {
