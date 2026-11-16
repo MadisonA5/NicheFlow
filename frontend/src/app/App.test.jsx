@@ -268,6 +268,23 @@ describe('NicheFlow landing page', () => {
             .toBeInTheDocument()
     })
 
+    it('shows breadcrumbs on the booking page', async () => {
+        window.history.pushState({}, '', '/listings/1/book')
+        render(<App/>)
+
+        const trail = await screen.findByRole('navigation', {name: 'Breadcrumb'})
+        expect(within(trail).getByRole('link', {name: 'Explore'}))
+            .toHaveAttribute('href', '/')
+        expect(within(trail).getByRole('link', {name: 'Sunny garden studio'}))
+            .toHaveAttribute('href', '/listings/1')
+        expect(within(trail).getByText('Book'))
+            .toHaveAttribute('aria-current', 'page')
+
+        fireEvent.click(within(trail).getByRole('link', {name: 'Sunny garden studio'}))
+        expect(await screen.findByRole('link', {name: 'Check dates'}))
+            .toBeInTheDocument()
+    })
+
     it('filters listings by keyword without case sensitivity', async () => {
         render(<App/>)
 

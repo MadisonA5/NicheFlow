@@ -2,6 +2,7 @@ import {useEffect, useState} from 'react'
 import {Link, useParams} from 'react-router-dom'
 import {getSession} from '../auth/authDataSource'
 import {createBooking, getUnavailablePeriods} from './bookingsDataSource'
+import Breadcrumbs from '../navigation/Breadcrumbs'
 import useListing from './useListing'
 
 function getToday() {
@@ -180,9 +181,13 @@ function BookingPage() {
 
     return (
         <main className="listing-page booking-page">
-            <Link className="back-link" to={`/listings/${listing.id}`}>
-                ← Back to listing
-            </Link>
+            <Breadcrumbs
+                items={[
+                    {label: 'Explore', to: '/'},
+                    {label: listing.title, to: `/listings/${listing.id}`},
+                    {label: 'Book'},
+                ]}
+            />
             <div className="booking-layout">
                 <section className="booking-card" aria-labelledby="booking-heading">
                     <p className="eyebrow">Plan your visit</p>
