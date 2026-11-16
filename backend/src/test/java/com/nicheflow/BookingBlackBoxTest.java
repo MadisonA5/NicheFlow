@@ -24,6 +24,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -139,6 +140,69 @@ class BookingBlackBoxTest {
                         {"listingId":%d,"startTime":"%s"}
                         """.formatted(listingId, T10)))
                 .andExpect(status().isBadRequest());
+    }
+
+    // =================================================================
+    // Issue #14: hourly listings
+    // =================================================================
+
+    /** A listing created without a unit is priced per day. */
+    @Test
+    void listingDefaultsToADailyPrice() throws Exception {
+        String supplier = login("SUPPLIER");
+        mockMvc.perform(post("/api/listings")
+                .header(HttpHeaders.AUTHORIZATION, bearer(supplier))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(listingBody("")))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.priceUnit").value("DAY"));
+    }
+
+    /** A price unit other than DAY or HOUR is rejected (400). */
+    @Test
+    void unknownPriceUnitIsRejected() throws Exception {
+        mockMvc.perform(post("/api/listings")
+                .header(HttpHeaders.AUTHORIZATION,
+                        bearer(login("SUPPLIER")))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(listingBody(",\"priceUnit\":\"WEEK\"")))
+                .andExpect(status().isBadRequest());
+    }
+
+    /**
+     * Two back-to-back hours on an hourly listing are both bookable,
+     * an overlapping hour is a conflict, and the account page totals
+     * the confirmed booking per hour (2 x 50.00).
+     */
+    @Test
+    void hourlyListingIsBookedAndPricedByTheHour() throws Exception {
+        String supplier = login("SUPPLIER");
+        long listingId = createHourlyListing(supplier);
+        String customer = login("CUSTOMER");
+
+        MvcResult created = book(customer, listingId, T10, T12)
+                .andExpect(status().isCreated())
+                .andReturn();
+        long bookingId = ((Number) JsonPath.read(
+                created.getResponse().getContentAsString(), "$.id"))
+                .longValue();
+        book(login("CUSTOMER"), listingId, T11, "2031-03-01T13:00:00Z")
+                .andExpect(status().isConflict());
+        book(login("CUSTOMER"), listingId, T12, "2031-03-01T13:00:00Z")
+                .andExpect(status().isCreated());
+
+        changeStatus(supplier, bookingId, "accept")
+                .andExpect(status().isOk());
+        changeStatus(customer, bookingId, "confirm")
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/account")
+                .header(HttpHeaders.AUTHORIZATION, bearer(customer)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.bookings[0].priceUnit")
+                        .value("HOUR"))
+                .andExpect(jsonPath("$.bookings[0].totalPrice")
+                        .value(100.00));
     }
 
     // =================================================================
@@ -364,6 +428,30 @@ class BookingBlackBoxTest {
                         "description":"A day on the river."}
                         """.formatted(UUID.randomUUID())))
                 .andExpect(status().isCreated())
+                .andReturn();
+        Number id = JsonPath.read(
+                result.getResponse().getContentAsString(), "$.id");
+        return id.longValue();
+    }
+
+    /** A listing body with the given extra JSON fields appended. */
+    private static String listingBody(String extraFields) {
+        return """
+                {"title":"Room %s","category":"Workspace","price":50.00,\
+                "location":"Edmonton",\
+                "description":"A quiet study room."%s}
+                """.formatted(UUID.randomUUID(), extraFields);
+    }
+
+    /** The supplier creates a listing priced per HOUR. */
+    private long createHourlyListing(String supplierToken)
+            throws Exception {
+        MvcResult result = mockMvc.perform(post("/api/listings")
+                .header(HttpHeaders.AUTHORIZATION, bearer(supplierToken))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(listingBody(",\"priceUnit\":\"HOUR\"")))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.priceUnit").value("HOUR"))
                 .andReturn();
         Number id = JsonPath.read(
                 result.getResponse().getContentAsString(), "$.id");

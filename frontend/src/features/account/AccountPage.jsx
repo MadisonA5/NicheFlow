@@ -7,6 +7,7 @@ import {
     getAccount,
     updateListing,
 } from './accountDataSource'
+import {priceUnitLabel} from '../listings/priceUnit'
 
 const categories = ['Workspace', 'Outdoor', 'Events', 'Services', 'Other']
 
@@ -246,7 +247,7 @@ function AccountPage() {
                                                             {listing.category}
                                                         </p>
                                                         <h3>{listing.title}</h3>
-                                                        <p>{listing.location} · ${listing.price} / day</p>
+                                                        <p>{listing.location} · ${listing.price} / {priceUnitLabel(listing.priceUnit)}</p>
                                                     </div>
                                                     <div className="account-listing-controls">
                                                         <span className={listing.active
@@ -327,7 +328,7 @@ function AccountPage() {
                                                     ` · Customer #${booking.customerId}`}
                                             </p>
                                             <h3>{booking.listingTitle}</h3>
-                                            <p>{booking.location} · ${booking.price} / day</p>
+                                            <p>{booking.location} · ${booking.price} / {priceUnitLabel(booking.priceUnit)}</p>
                                             <p>
                                                 {formatDateTime(booking.startTime)} –{' '}
                                                 {formatDateTime(booking.endTime)}

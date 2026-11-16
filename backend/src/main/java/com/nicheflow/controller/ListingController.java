@@ -74,8 +74,8 @@ public class ListingController {
             @Valid @RequestBody ListingRequest request) {
         // To persist the listing owned by this JWT subject
         Listing listing = listingService.create(caller, request.title(),
-                request.category(), request.price(), request.location(),
-                request.description());
+                request.category(), request.price(), request.priceUnit(),
+                request.location(), request.description());
 
         return ListingResponse.from(listing);
     }
@@ -144,7 +144,8 @@ public class ListingController {
         // To overwrite fields only after the service checks ownership
         Listing listing = listingService.update(caller, listingId,
                 request.title(), request.category(), request.price(),
-                request.location(), request.description());
+                request.priceUnit(), request.location(),
+                request.description());
 
         return ListingResponse.from(listing);
     }

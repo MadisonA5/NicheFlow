@@ -311,6 +311,7 @@ describe('NicheFlow landing page', () => {
                 title: 'Garden workspace',
                 category: 'Workspace',
                 price: 38,
+                priceUnit: 'DAY',
                 location: 'Calgary, AB',
                 description: 'A quiet place to work.',
             }),
@@ -740,5 +741,130 @@ describe('NicheFlow landing page', () => {
         expect(screen.getByText(displayDate, {
             selector: 'strong',
         })).toBeInTheDocument()
+    })
+
+    describe('hourly listings (issue #14)', () => {
+        const tomorrow = new Date()
+        tomorrow.setDate(tomorrow.getDate() + 1)
+        const day = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`
+        const localInstant = (time) => new Date(`${day}T${time}:00`).toISOString()
+
+        beforeEach(() => {
+            window.history.pushState({}, '', '/')
+        })
+
+        function stubHourlyListing(fetchMock) {
+            vi.stubGlobal('fetch', fetchMock ?? vi.fn((url) => Promise.resolve({
+                ok: true,
+                json: async () => url.startsWith('/api/bookings/availability/')
+                    ? [{startTime: localInstant('12:00'), endTime: localInstant('13:00')}]
+                    : {
+                        items: listings.map((listing) => ({
+                            ...listing,
+                            priceUnit: listing.id === 1 ? 'HOUR' : 'DAY',
+                            active: true,
+                        })),
+                    },
+            })))
+        }
+
+        async function openHoursForTomorrow() {
+            localStorage.setItem('nicheflow.session', JSON.stringify({
+                token: 'signed.jwt.token',
+                user: {id: 9, email: 'neighbor@example.com', role: 'CUSTOMER'},
+            }))
+            render(<App/>)
+            fireEvent.click(await screen.findByRole('link', {name: 'Sunny garden studio'}))
+            fireEvent.click(await screen.findByRole('link', {name: 'Check dates'}))
+            fireEvent.click(await screen.findByRole('button', {name: day}))
+            return screen.getByRole('group', {name: 'Choose booking hours'})
+        }
+
+        it('shows an hourly price on the listing card', async () => {
+            stubHourlyListing()
+            render(<App/>)
+
+            const card = (await screen.findByRole('link', {name: 'Sunny garden studio'}))
+                .closest('article')
+            expect(within(card).getByText(/\/ hour/)).toBeInTheDocument()
+        })
+
+        it('greys out a booked hour and prices the selected hours', async () => {
+            stubHourlyListing()
+            const hours = await openHoursForTomorrow()
+
+            expect(within(hours).getByRole('button', {name: '12:00, unavailable'}))
+                .toBeDisabled()
+            expect(within(hours).getByRole('button', {name: '11:00'})).toBeEnabled()
+
+            fireEvent.click(within(hours).getByRole('button', {name: '09:00'}))
+            fireEvent.click(within(hours).getByRole('button', {name: '11:00'}))
+
+            expect(screen.getByText('$38 × 3 hours')).toBeInTheDocument()
+            expect(screen.getByText('09:00 – 12:00', {selector: 'strong'}))
+                .toBeInTheDocument()
+        })
+
+        it('starts a new range instead of extending across a booked hour', async () => {
+            stubHourlyListing()
+            const hours = await openHoursForTomorrow()
+
+            fireEvent.click(within(hours).getByRole('button', {name: '11:00'}))
+            fireEvent.click(within(hours).getByRole('button', {name: '14:00'}))
+
+            expect(screen.getByText('$38 × 1 hour')).toBeInTheDocument()
+            expect(screen.getByText('14:00 – 15:00', {selector: 'strong'}))
+                .toBeInTheDocument()
+        })
+
+        it('requests the chosen hours as UTC instants', async () => {
+            const fetchMock = vi.fn((url) => Promise.resolve({
+                ok: true,
+                json: async () => {
+                    if (url.startsWith('/api/bookings/availability/')) return []
+                    if (url === '/api/bookings') {
+                        return {id: 21, listingId: 1, status: 'PENDING'}
+                    }
+                    return {
+                        items: listings.map((listing) => ({
+                            ...listing,
+                            priceUnit: listing.id === 1 ? 'HOUR' : 'DAY',
+                            active: true,
+                        })),
+                    }
+                },
+            }))
+            stubHourlyListing(fetchMock)
+            const hours = await openHoursForTomorrow()
+
+            fireEvent.click(within(hours).getByRole('button', {name: '15:00'}))
+            fireEvent.click(within(hours).getByRole('button', {name: '16:00'}))
+            fireEvent.click(screen.getByRole('button', {name: 'Request booking'}))
+
+            expect(await screen.findByRole('status')).toHaveTextContent('(Request #21)')
+            expect(fetchMock).toHaveBeenLastCalledWith('/api/bookings', expect.objectContaining({
+                body: JSON.stringify({
+                    listingId: 1,
+                    startTime: localInstant('15:00'),
+                    endTime: localInstant('17:00'),
+                }),
+            }))
+        })
+
+        it('lets a supplier price a new listing per hour', async () => {
+            localStorage.setItem('nicheflow.session', JSON.stringify({
+                token: 'supplier.jwt.token',
+                user: {id: 1, email: 'host@example.com', role: 'SUPPLIER'},
+            }))
+            render(<App/>)
+
+            fireEvent.click(await screen.findByRole('link', {name: 'Create listing'}))
+            fireEvent.change(screen.getByRole('combobox', {name: 'Priced per'}), {
+                target: {value: 'HOUR'},
+            })
+
+            expect(screen.getByRole('spinbutton', {name: 'Price per hour ($)'}))
+                .toBeInTheDocument()
+        })
     })
 })

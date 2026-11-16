@@ -22,6 +22,7 @@ import com.nicheflow.exception.InvalidSearchException;
 import com.nicheflow.exception.ListingAccessDeniedException;
 import com.nicheflow.exception.ListingNotFoundException;
 import com.nicheflow.model.Listing;
+import com.nicheflow.model.PriceUnit;
 import com.nicheflow.model.Role;
 import com.nicheflow.model.User;
 import com.nicheflow.repository.ListingRepository;
@@ -72,6 +73,29 @@ public class ListingService {
     public Listing create(AuthenticatedUser caller, String title,
             String category, BigDecimal price, String location,
             String description) {
+        return create(caller, title, category, price, null, location,
+                description);
+    }
+
+    /**
+     * create - This function creates a listing priced per priceUnit.
+     * A null unit is priced per DAY, as listings were before #14.
+     *
+     * Parameters:
+     * caller - The AuthenticatedUser from the security context
+     * title - The display name of the listing
+     * category - The category string
+     * price - The price of one unit, with two decimal places
+     * priceUnit - DAY or HOUR; null means DAY
+     * location - Where the listing is offered
+     * description - The supplier's description of the listing
+     *
+     * Return - The persisted listing
+     */
+    @Transactional
+    public Listing create(AuthenticatedUser caller, String title,
+            String category, BigDecimal price, PriceUnit priceUnit,
+            String location, String description) {
         // To reject a customer or admin creating a supplier listing
         requireSupplierRole(caller);
 
@@ -81,6 +105,9 @@ public class ListingService {
         // To persist a new active listing owned by that supplier
         Listing listing = new Listing(title, category, price, location,
                 description, supplier);
+        if (priceUnit != null) {
+            listing.setPriceUnit(priceUnit);
+        }
 
         return listingRepository.save(listing);
     }
@@ -105,6 +132,31 @@ public class ListingService {
     public Listing update(AuthenticatedUser caller, Long listingId,
             String title, String category, BigDecimal price,
             String location, String description) {
+        return update(caller, listingId, title, category, price, null,
+                location, description);
+    }
+
+    /**
+     * update - This function edits a listing and, when priceUnit is
+     * not null, its price unit. A null unit keeps the stored one, so
+     * an older client that does not send it changes nothing.
+     *
+     * Parameters:
+     * caller - The AuthenticatedUser from the security context
+     * listingId - The listing to edit
+     * title - The new display name
+     * category - The new category string
+     * price - The new price of one unit
+     * priceUnit - DAY, HOUR, or null to keep the stored unit
+     * location - The new place the listing is offered
+     * description - The new supplier description
+     *
+     * Return - The updated listing
+     */
+    @Transactional
+    public Listing update(AuthenticatedUser caller, Long listingId,
+            String title, String category, BigDecimal price,
+            PriceUnit priceUnit, String location, String description) {
         Listing listing = requireOwnedListing(caller, listingId);
 
         // To replace only the editable fields, never owner or active
@@ -113,6 +165,9 @@ public class ListingService {
         listing.setPrice(price);
         listing.setLocation(location);
         listing.setDescription(description);
+        if (priceUnit != null) {
+            listing.setPriceUnit(priceUnit);
+        }
 
         return listingRepository.save(listing);
     }

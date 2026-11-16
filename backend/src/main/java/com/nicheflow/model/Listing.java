@@ -15,6 +15,8 @@ import java.math.BigDecimal;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -39,6 +41,10 @@ public class Listing {
 
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal price;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "price_unit", nullable = false, length = 16)
+    private PriceUnit priceUnit = PriceUnit.DAY;
 
     @Column(nullable = false, length = 255)
     private String location;
@@ -160,6 +166,14 @@ public class Listing {
      *
      * Return - The location
      */
+    public PriceUnit getPriceUnit() {
+        return priceUnit;
+    }
+
+    public void setPriceUnit(PriceUnit priceUnit) {
+        this.priceUnit = priceUnit;
+    }
+
     public String getLocation() {
         return location;
     }

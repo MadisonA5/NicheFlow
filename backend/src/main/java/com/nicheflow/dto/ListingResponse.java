@@ -12,10 +12,11 @@ package com.nicheflow.dto;
 import java.math.BigDecimal;
 
 import com.nicheflow.model.Listing;
+import com.nicheflow.model.PriceUnit;
 
 public record ListingResponse(Long id, String title, String category,
-        BigDecimal price, String location, String description,
-        Long supplierId, boolean active) {
+        BigDecimal price, PriceUnit priceUnit, String location,
+        String description, Long supplierId, boolean active) {
 
     /**
      * from - This function copies the public listing fields, including
@@ -29,7 +30,7 @@ public record ListingResponse(Long id, String title, String category,
     public static ListingResponse from(Listing listing) {
         return new ListingResponse(listing.getId(), listing.getTitle(),
                 listing.getCategory(), listing.getPrice(),
-                listing.getLocation(), listing.getDescription(),
+                listing.getPriceUnit(), listing.getLocation(), listing.getDescription(),
                 listing.getSupplier().getId(), listing.isActive());
     }
 }

@@ -11,6 +11,8 @@ package com.nicheflow.dto;
 
 import java.math.BigDecimal;
 
+import com.nicheflow.model.PriceUnit;
+
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
@@ -30,5 +32,7 @@ public record ListingRequest(
 
         @NotBlank @Size(max = 255) String location,
 
-        @NotBlank @Size(max = 2000) String description) {
+        @NotBlank @Size(max = 2000) String description,
+
+        PriceUnit priceUnit) {
 }

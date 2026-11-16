@@ -191,7 +191,7 @@ public class BookingService {
     }
 
     /**
-     * confirm - This function charges the listing price, then moves
+     * confirm - This function charges the booking total, then moves
      * the caller's own pending or accepted booking to confirmed. The
      * idempotency key is stable so a retry does not charge again.
      *
@@ -211,8 +211,8 @@ public class BookingService {
         rejectUnauthorizedTransition(caller, booking,
                 BookingStatus.CONFIRMED);
 
-        // To take payment before the status leaves pending
-        paymentClient.charge(booking.getListing().getPrice(),
+        // To take payment for every booked day or hour (#14)
+        paymentClient.charge(bookingTotal(booking),
                 confirmIdempotencyKey(bookingId));
 
         return transition(caller, bookingId, BookingStatus.CONFIRMED);
@@ -241,7 +241,7 @@ public class BookingService {
 
         // To price the refund from the moment of this cancel
         BigDecimal refund = RefundCalculator.calculateRefund(
-                booking.getListing().getPrice(),
+                bookingTotal(booking),
                 booking.getStartTime(),
                 Instant.now());
 
@@ -250,6 +250,22 @@ public class BookingService {
         booking.setStatus(BookingStatus.CANCELLED);
 
         return bookingRepository.save(booking);
+    }
+
+    /**
+     * bookingTotal - This function prices the whole booking window in
+     * the listing's unit, the amount confirm charges.
+     *
+     * Parameters:
+     * booking - The booking being charged or refunded
+     *
+     * Return - The listing price times the booked days or hours
+     */
+    private static BigDecimal bookingTotal(Booking booking) {
+        Listing listing = booking.getListing();
+        return BookingPriceCalculator.total(listing.getPrice(),
+                listing.getPriceUnit(), booking.getStartTime(),
+                booking.getEndTime());
     }
 
     /**

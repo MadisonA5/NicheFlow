@@ -1426,3 +1426,28 @@ h2 {
     flex-direction: column;
   }
 }
+
+/* Issue #14: hour slots for listings priced per hour */
+.booking-hour-picker {
+  margin-top: 16px;
+}
+
+.booking-hour-picker h3 {
+  margin: 0 0 10px;
+  font-size: 15px;
+}
+
+.booking-hour-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.booking-calendar-day.booking-hour-slot {
+  aspect-ratio: auto;
+  padding: 8px 0;
+  border-radius: 10px;
+  font-size: 13px;
+}
+
+.booking-calendar-day.booking-hour-slot.in-range:not(.selected) {
+  border-radius: 10px;
+}

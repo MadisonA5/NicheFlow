@@ -37,6 +37,7 @@ import com.nicheflow.exception.BookingAccessDeniedException;
 import com.nicheflow.model.Booking;
 import com.nicheflow.model.BookingStatus;
 import com.nicheflow.model.Listing;
+import com.nicheflow.model.PriceUnit;
 import com.nicheflow.model.Role;
 import com.nicheflow.model.User;
 import com.nicheflow.payment.MockStripePaymentClient;
@@ -317,6 +318,33 @@ class BookingAuthorizationTest {
 
         assertThat(stored.getStatus()).isEqualTo(BookingStatus.CONFIRMED);
         verify(paymentClient).charge(PRICE,
+                BookingService.confirmIdempotencyKey(BOOKING_ID));
+    }
+
+    /**
+     * confirmChargesEveryBookedHourOnAnHourlyListing - Issue #14.
+     * This function prices the listing per HOUR and books 3 hours, so
+     * confirm charges 3 times the price instead of the price once.
+     */
+    @Test
+    void confirmChargesEveryBookedHourOnAnHourlyListing() {
+        listing.setPriceUnit(PriceUnit.HOUR);
+        Booking booking = TestBookings.withId(BOOKING_ID, listing,
+                customer, START, START.plusSeconds(3 * 3600));
+        booking.setStatus(BookingStatus.ACCEPTED);
+        given(bookingRepository.findById(BOOKING_ID))
+                .willReturn(Optional.of(booking));
+        BigDecimal threeHours = new BigDecimal("75.00");
+        given(paymentClient.charge(eq(threeHours),
+                eq(BookingService.confirmIdempotencyKey(BOOKING_ID))))
+                .willReturn(new PaymentCharge(
+                        BookingService.confirmIdempotencyKey(BOOKING_ID),
+                        threeHours));
+        stubSave();
+
+        bookingService.confirm(customerCaller, BOOKING_ID);
+
+        verify(paymentClient).charge(threeHours,
                 BookingService.confirmIdempotencyKey(BOOKING_ID));
     }
 

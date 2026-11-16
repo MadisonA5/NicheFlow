@@ -82,7 +82,7 @@ class ListingControllerTest {
         Listing stored = TestListings.withId(3L, "Kayak", "SPORTS",
                 new BigDecimal("25.00"), owner);
         given(listingService.create(eq(caller), eq("Kayak"), eq("SPORTS"),
-                any(), eq(LOCATION), eq(DESCRIPTION))).willReturn(stored);
+                any(), isNull(), eq(LOCATION), eq(DESCRIPTION))).willReturn(stored);
 
         mockMvc.perform(post("/api/listings")
                 .header(HttpHeaders.AUTHORIZATION, "Bearer good-token")
@@ -94,7 +94,8 @@ class ListingControllerTest {
                 .andExpect(jsonPath("$.active").value(true));
 
         verify(listingService).create(eq(caller), eq("Kayak"),
-                eq("SPORTS"), any(), eq(LOCATION), eq(DESCRIPTION));
+                eq("SPORTS"), any(), isNull(), eq(LOCATION),
+                eq(DESCRIPTION));
     }
 
     /**
@@ -110,7 +111,7 @@ class ListingControllerTest {
         Listing stored = TestListings.withId(3L, "Kayak", "SPORTS",
                 new BigDecimal("25.00"), owner);
         given(listingService.create(eq(caller), eq("Kayak"), eq("SPORTS"),
-                any(), eq(LOCATION), eq(DESCRIPTION))).willReturn(stored);
+                any(), isNull(), eq(LOCATION), eq(DESCRIPTION))).willReturn(stored);
 
         mockMvc.perform(post("/api/listings")
                 .header(HttpHeaders.AUTHORIZATION, "Bearer good-token")
@@ -121,7 +122,8 @@ class ListingControllerTest {
                 .andExpect(jsonPath("$.description").value(DESCRIPTION));
 
         verify(listingService).create(eq(caller), eq("Kayak"),
-                eq("SPORTS"), any(), eq(LOCATION), eq(DESCRIPTION));
+                eq("SPORTS"), any(), isNull(), eq(LOCATION),
+                eq(DESCRIPTION));
     }
 
     /**
@@ -154,7 +156,7 @@ class ListingControllerTest {
                 .andExpect(status().isForbidden());
 
         verify(listingService, never()).create(any(), any(), any(),
-                any(), any(), any());
+                any(), any(), any(), any());
     }
 
     /**
@@ -185,7 +187,7 @@ class ListingControllerTest {
     void updateWhenTheServiceDeniesOwnershipReturns403() throws Exception {
         AuthenticatedUser other = supplier(8L, "other-token");
         given(listingService.update(eq(other), eq(3L), any(), any(),
-                any(), any(), any()))
+                any(), any(), any(), any()))
                 .willThrow(new ListingAccessDeniedException());
 
         mockMvc.perform(put("/api/listings/3")
@@ -203,7 +205,7 @@ class ListingControllerTest {
     void updateWhenTheListingIsMissingReturns404() throws Exception {
         AuthenticatedUser caller = supplier(7L, "good-token");
         given(listingService.update(eq(caller), eq(99L), any(), any(),
-                any(), any(), any()))
+                any(), any(), any(), any()))
                 .willThrow(new ListingNotFoundException(99L));
 
         mockMvc.perform(put("/api/listings/99")
@@ -345,7 +347,7 @@ class ListingControllerTest {
                 .andExpect(status().isForbidden());
 
         verify(listingService, never()).create(any(), any(), any(),
-                any(), any(), any());
+                any(), any(), any(), any());
     }
 
     /**
@@ -421,7 +423,7 @@ class ListingControllerTest {
                 .andExpect(jsonPath("$.errors.title").exists());
 
         verify(listingService, never()).create(any(), any(), any(),
-                any(), any(), any());
+                any(), any(), any(), any());
     }
 
     /**
@@ -445,7 +447,7 @@ class ListingControllerTest {
                 .andExpect(jsonPath("$.errors.title").exists());
 
         verify(listingService, never()).create(any(), any(), any(),
-                any(), any(), any());
+                any(), any(), any(), any());
     }
 
     /**
@@ -468,7 +470,7 @@ class ListingControllerTest {
                 .andExpect(jsonPath("$.errors.category").exists());
 
         verify(listingService, never()).create(any(), any(), any(),
-                any(), any(), any());
+                any(), any(), any(), any());
     }
 
     /**
@@ -492,7 +494,7 @@ class ListingControllerTest {
                 .andExpect(jsonPath("$.errors.category").exists());
 
         verify(listingService, never()).create(any(), any(), any(),
-                any(), any(), any());
+                any(), any(), any(), any());
     }
 
     /**
@@ -515,7 +517,7 @@ class ListingControllerTest {
                 .andExpect(jsonPath("$.errors.price").exists());
 
         verify(listingService, never()).create(any(), any(), any(),
-                any(), any(), any());
+                any(), any(), any(), any());
     }
 
     /**

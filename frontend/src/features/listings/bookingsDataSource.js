@@ -25,7 +25,9 @@ export async function getUnavailablePeriods(listingId) {
     return payload
 }
 
-export async function createBooking({listingId, checkIn, checkOut}) {
+// A daily booking sends checkIn and checkOut dates. An hourly booking
+// (issue #14) sends the startTime and endTime instants it picked.
+export async function createBooking({listingId, checkIn, checkOut, startTime, endTime}) {
     const session = getSession()
     if (!session?.token) {
         throw new Error('Sign in with a customer account to request a booking.')
@@ -42,8 +44,8 @@ export async function createBooking({listingId, checkIn, checkOut}) {
         },
         body: JSON.stringify({
             listingId: Number(listingId),
-            startTime: toUtcMidnight(checkIn),
-            endTime: toUtcMidnight(checkOut),
+            startTime: startTime ?? toUtcMidnight(checkIn),
+            endTime: endTime ?? toUtcMidnight(checkOut),
         }),
     })
     const payload = await response.json().catch(() => null)

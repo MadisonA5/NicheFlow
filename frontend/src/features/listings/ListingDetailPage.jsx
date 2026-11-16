@@ -1,5 +1,6 @@
 import {Link, useParams} from 'react-router-dom'
 import useListing from './useListing'
+import {priceUnitLabel} from './priceUnit'
 
 function ListingDetailPage() {
     const {listingId} = useParams()
@@ -32,7 +33,7 @@ function ListingDetailPage() {
                     <p className="listing-description">{listing.description}</p>
                     <div className="listing-detail-bottom">
                         <p className="listing-price">
-                            <strong>${listing.price}</strong> / day
+                            <strong>${listing.price}</strong> / {priceUnitLabel(listing.priceUnit)}
                         </p>
                         <Link
                             className="booking-link"

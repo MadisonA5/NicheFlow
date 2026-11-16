@@ -37,6 +37,7 @@ import com.nicheflow.exception.InvalidSearchException;
 import com.nicheflow.exception.ListingAccessDeniedException;
 import com.nicheflow.exception.ListingNotFoundException;
 import com.nicheflow.model.Listing;
+import com.nicheflow.model.PriceUnit;
 import com.nicheflow.model.Role;
 import com.nicheflow.model.User;
 import com.nicheflow.repository.ListingRepository;
@@ -94,6 +95,64 @@ class ListingServiceTest {
         assertThat(savedListing.getValue().getDescription())
                 .isEqualTo(DESCRIPTION);
         assertThat(savedListing.getValue().isActive()).isTrue();
+    }
+
+    /**
+     * createDefaultsToADailyPrice - Issue #14. This function proves a
+     * listing created without a price unit is priced per DAY, as
+     * listings were before hourly booking.
+     */
+    @Test
+    void createDefaultsToADailyPrice() {
+        given(userRepository.findById(7L)).willReturn(Optional.of(owner));
+        given(listingRepository.save(any(Listing.class)))
+                .willAnswer(call -> call.getArgument(0));
+
+        Listing created = listingService.create(ownerCaller, "Kayak",
+                "SPORTS", PRICE, null, LOCATION, DESCRIPTION);
+
+        assertThat(created.getPriceUnit()).isEqualTo(PriceUnit.DAY);
+    }
+
+    /**
+     * createStoresAnHourlyPrice - Issue #14. This function proves a
+     * supplier can price a listing per HOUR.
+     */
+    @Test
+    void createStoresAnHourlyPrice() {
+        given(userRepository.findById(7L)).willReturn(Optional.of(owner));
+        given(listingRepository.save(any(Listing.class)))
+                .willAnswer(call -> call.getArgument(0));
+
+        Listing created = listingService.create(ownerCaller,
+                "Study room", "Workspace", PRICE, PriceUnit.HOUR,
+                LOCATION, DESCRIPTION);
+
+        assertThat(created.getPriceUnit()).isEqualTo(PriceUnit.HOUR);
+    }
+
+    /**
+     * updateKeepsThePriceUnitWhenNoneIsSent - Issue #14. This
+     * function proves an edit that does not send a unit keeps HOUR,
+     * and one that sends DAY changes it.
+     */
+    @Test
+    void updateKeepsThePriceUnitWhenNoneIsSent() {
+        Listing stored = TestListings.withId(3L, "Room", "Workspace",
+                PRICE, owner);
+        stored.setPriceUnit(PriceUnit.HOUR);
+        given(listingRepository.findById(3L))
+                .willReturn(Optional.of(stored));
+        given(listingRepository.save(any(Listing.class)))
+                .willAnswer(call -> call.getArgument(0));
+
+        Listing kept = listingService.update(ownerCaller, 3L, "Room",
+                "Workspace", PRICE, null, LOCATION, DESCRIPTION);
+        assertThat(kept.getPriceUnit()).isEqualTo(PriceUnit.HOUR);
+
+        Listing changed = listingService.update(ownerCaller, 3L, "Room",
+                "Workspace", PRICE, PriceUnit.DAY, LOCATION, DESCRIPTION);
+        assertThat(changed.getPriceUnit()).isEqualTo(PriceUnit.DAY);
     }
 
     /**

@@ -1,4 +1,5 @@
 import {Link} from 'react-router-dom'
+import {priceUnitLabel} from './priceUnit'
 
 function ListingCard({listing}) {
     return (
@@ -14,7 +15,7 @@ function ListingCard({listing}) {
                 </h3>
                 <p className="listing-location">{listing.location}</p>
                 <p className="listing-price">
-                    <strong>${listing.price}</strong> / day
+                    <strong>${listing.price}</strong> / {priceUnitLabel(listing.priceUnit)}
                 </p>
                 <Link className="view-listing-link" to={`/listings/${listing.id}`}>
                     View details

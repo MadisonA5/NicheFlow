@@ -3,6 +3,7 @@ import {Link, useParams} from 'react-router-dom'
 import {getSession} from '../auth/authDataSource'
 import {createBooking, getUnavailablePeriods} from './bookingsDataSource'
 import useListing from './useListing'
+import {isHourly, priceUnitLabel} from './priceUnit'
 
 function getToday() {
     const today = new Date()
@@ -45,6 +46,35 @@ function isUnavailableDate(value, periods) {
     return overlapsUnavailablePeriod(value, addOneDay(value), periods)
 }
 
+// Issue #14: hour slots for a listing priced per hour
+const HOURS = Array.from({length: 24}, (_, hour) => hour)
+const HOUR_MS = 3_600_000
+
+function padHour(hour) {
+    return `${String(hour).padStart(2, '0')}:00`
+}
+
+// The local moment an hour slot starts on a calendar day
+function hourStart(day, hour) {
+    return new Date(`${day}T${padHour(hour)}:00`)
+}
+
+function isHourBooked(day, hour, periods) {
+    const start = hourStart(day, hour).getTime()
+    const end = start + HOUR_MS
+    return periods.some((period) =>
+        start < Date.parse(period.endTime) && Date.parse(period.startTime) < end)
+}
+
+function isHourOpen(day, hour, periods, now) {
+    return hourStart(day, hour).getTime() > now &&
+        !isHourBooked(day, hour, periods)
+}
+
+function isFullyBookedDay(day, periods) {
+    return HOURS.every((hour) => isHourBooked(day, hour, periods))
+}
+
 function formatDate(value) {
     if (!value) return 'Choose a date'
     return new Intl.DateTimeFormat(undefined, {
@@ -58,6 +88,8 @@ function BookingPage() {
     const {listing, isLoading, loadError} = useListing(listingId)
     const [checkIn, setCheckIn] = useState('')
     const [checkOut, setCheckOut] = useState('')
+    const [bookingDay, setBookingDay] = useState('')
+    const [hourRange, setHourRange] = useState(null)
     const [availabilityResult, setAvailabilityResult] = useState(null)
     const [calendarMonth, setCalendarMonth] = useState(() => {
         const today = new Date()
@@ -68,6 +100,12 @@ function BookingPage() {
     const [isSubmitting, setIsSubmitting] = useState(false)
     const session = getSession()
     const rentalDays = getRentalDays(checkIn, checkOut)
+    const hourly = isHourly(listing)
+    const bookedHours = hourRange ? hourRange.end - hourRange.start + 1 : 0
+    const units = hourly ? bookedHours : rentalDays
+    const unitLabel = priceUnitLabel(listing?.priceUnit)
+    // To grey out hours that started before the page was opened
+    const [now] = useState(() => Date.now())
     const todayKey = getToday()
     const listingIdForAvailability = listing?.id
     const availabilityMatchesListing = Boolean(
@@ -131,18 +169,35 @@ function BookingPage() {
         month: 'long',
         year: 'numeric',
     }).format(calendarMonth)
-    const selectedRangeUnavailable = overlapsUnavailablePeriod(
+    const selectedRangeUnavailable = !hourly && overlapsUnavailablePeriod(
         checkIn, checkOut, unavailablePeriods,
     )
 
     function chooseDate(value) {
         setMessage('')
+        if (hourly) {
+            setBookingDay(value)
+            setHourRange(null)
+            return
+        }
         if (!checkIn || checkOut || value <= checkIn) {
             setCheckIn(value)
             setCheckOut('')
         } else {
             setCheckOut(value)
         }
+    }
+
+    // First click picks one hour; a later open hour extends the range
+    function chooseHour(hour) {
+        setMessage('')
+        const extending = hourRange && hourRange.start === hourRange.end &&
+            hour > hourRange.start &&
+            HOURS.slice(hourRange.start, hour + 1).every((slot) =>
+                isHourOpen(bookingDay, slot, unavailablePeriods, Date.now()))
+        setHourRange(extending
+            ? {start: hourRange.start, end: hour}
+            : {start: hour, end: hour})
     }
 
     if (isLoading) {
@@ -164,7 +219,12 @@ function BookingPage() {
         setIsSubmitting(true)
 
         try {
-            const createdBooking = await createBooking({
+            const createdBooking = await createBooking(hourly ? {
+                listingId: listing.id,
+                startTime: hourStart(bookingDay, hourRange.start).toISOString(),
+                endTime: new Date(hourStart(bookingDay, hourRange.end).getTime() +
+                    HOUR_MS).toISOString(),
+            } : {
                 listingId: listing.id,
                 checkIn,
                 checkOut,
@@ -188,7 +248,9 @@ function BookingPage() {
                     <p className="eyebrow">Plan your visit</p>
                     <h1 id="booking-heading">Request a booking</h1>
                     <p className="auth-description">
-                        Choose available dates to see an estimated total.
+                        {hourly
+                            ? 'Choose a date and available hours to see an estimated total.'
+                            : 'Choose available dates to see an estimated total.'}
                     </p>
                     {!session ? (
                         <p className="preview-note">
@@ -255,17 +317,19 @@ function BookingPage() {
                                                     aria-hidden="true"/>
                                             }
                                             const value = dateKey(day)
-                                            const unavailable =
-                                                isUnavailableDate(value, unavailablePeriods)
-                                            const choosingCheckout =
+                                            const unavailable = hourly
+                                                ? isFullyBookedDay(value, unavailablePeriods)
+                                                : isUnavailableDate(value, unavailablePeriods)
+                                            const choosingCheckout = !hourly &&
                                                 Boolean(checkIn && !checkOut && value > checkIn)
                                             const overlap = choosingCheckout &&
                                                 overlapsUnavailablePeriod(
                                                     checkIn, value, unavailablePeriods,
                                                 )
-                                            const selected = value === checkIn ||
-                                                value === checkOut
-                                            const inRange = checkIn && checkOut &&
+                                            const selected = hourly
+                                                ? value === bookingDay
+                                                : value === checkIn || value === checkOut
+                                            const inRange = !hourly && checkIn && checkOut &&
                                                 value >= checkIn && value < checkOut
                                             const canUseAsCheckoutBoundary =
                                                 choosingCheckout && !overlap
@@ -298,12 +362,66 @@ function BookingPage() {
                                             )
                                         })}
                                     </div>
-                                    <div className="booking-calendar-selection">
-                                        <p>Check-in <strong>{formatDate(checkIn)}</strong></p>
-                                        <p>Check-out <strong>{formatDate(checkOut)}</strong></p>
-                                    </div>
+                                    {hourly && bookingDay && (
+                                        <div className="booking-hour-picker" role="group"
+                                            aria-label="Choose booking hours">
+                                            <h3>Hours on {formatDate(bookingDay)}</h3>
+                                            <div className="booking-calendar-grid booking-hour-grid">
+                                                {HOURS.map((hour) => {
+                                                    const booked = isHourBooked(
+                                                        bookingDay, hour, unavailablePeriods,
+                                                    )
+                                                    const open = isHourOpen(
+                                                        bookingDay, hour, unavailablePeriods, now,
+                                                    )
+                                                    const inRange = Boolean(hourRange &&
+                                                        hour >= hourRange.start &&
+                                                        hour <= hourRange.end)
+                                                    const selected = Boolean(hourRange &&
+                                                        (hour === hourRange.start ||
+                                                            hour === hourRange.end))
+                                                    const classes = [
+                                                        'booking-calendar-day',
+                                                        'booking-hour-slot',
+                                                        booked && 'unavailable',
+                                                        selected && 'selected',
+                                                        inRange && 'in-range',
+                                                    ].filter(Boolean).join(' ')
+                                                    return (
+                                                        <button
+                                                            className={classes}
+                                                            type="button"
+                                                            key={hour}
+                                                            aria-label={`${padHour(hour)}${booked
+                                                                ? ', unavailable' : ''}`}
+                                                            aria-pressed={inRange}
+                                                            disabled={!open || Boolean(booking)}
+                                                            onClick={() => chooseHour(hour)}
+                                                        >
+                                                            {padHour(hour)}
+                                                        </button>
+                                                    )
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
+                                    {hourly ? (
+                                        <div className="booking-calendar-selection">
+                                            <p>Date <strong>{formatDate(bookingDay)}</strong></p>
+                                            <p>Time <strong>{hourRange
+                                                ? `${padHour(hourRange.start)} – ${padHour(hourRange.end + 1)}`
+                                                : 'Choose hours'}</strong></p>
+                                        </div>
+                                    ) : (
+                                        <div className="booking-calendar-selection">
+                                            <p>Check-in <strong>{formatDate(checkIn)}</strong></p>
+                                            <p>Check-out <strong>{formatDate(checkOut)}</strong></p>
+                                        </div>
+                                    )}
                                     <p className="booking-calendar-legend">
-                                        <span aria-hidden="true"/> Unavailable dates are shaded.
+                                        <span aria-hidden="true"/> {hourly
+                                            ? 'Fully booked dates and booked hours are shaded.'
+                                            : 'Unavailable dates are shaded.'}
                                     </p>
                                 </>
                             )}
@@ -322,7 +440,7 @@ function BookingPage() {
                             className="auth-submit-button"
                             type="submit"
                             disabled={availabilityLoading || Boolean(availabilityError) ||
-                                selectedRangeUnavailable || rentalDays === 0 || !session ||
+                                selectedRangeUnavailable || units === 0 || !session ||
                                 session.user.role !== 'CUSTOMER' || isSubmitting || Boolean(booking)}
                         >
                             {isSubmitting ? 'Submitting…' : booking ? 'Request submitted' : 'Request booking'}
@@ -345,12 +463,12 @@ function BookingPage() {
                     <h2>{listing.title}</h2>
                     <p className="listing-location">{listing.location}</p>
                     <div className="booking-price-line">
-                        <span>${listing.price} × {rentalDays || '—'} {rentalDays === 1 ? 'day' : 'days'}</span>
-                        <strong>{rentalDays ? `$${listing.price * rentalDays}` : '—'}</strong>
+                        <span>${listing.price} × {units || '—'} {units === 1 ? unitLabel : `${unitLabel}s`}</span>
+                        <strong>{units ? `$${listing.price * units}` : '—'}</strong>
                     </div>
                     <p className="booking-total">
                         <span>Estimated total</span>
-                        <strong>{rentalDays ? `$${listing.price * rentalDays}` : 'Choose dates'}</strong>
+                        <strong>{units ? `$${listing.price * units}` : 'Choose dates'}</strong>
                     </p>
                     <p className="booking-estimate-note">
                         Estimate only. Taxes, availability, and final pricing aren’t included.

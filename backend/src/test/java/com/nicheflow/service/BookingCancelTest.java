@@ -36,6 +36,7 @@ import com.nicheflow.exception.InvalidBookingTransitionException;
 import com.nicheflow.model.Booking;
 import com.nicheflow.model.BookingStatus;
 import com.nicheflow.model.Listing;
+import com.nicheflow.model.PriceUnit;
 import com.nicheflow.model.Role;
 import com.nicheflow.model.User;
 import com.nicheflow.payment.PaymentClient;
@@ -47,8 +48,6 @@ import com.nicheflow.security.AuthenticatedUser;
 @ExtendWith(MockitoExtension.class)
 class BookingCancelTest {
 
-    private static final Instant END = Instant.parse(
-            "2026-12-01T16:00:00Z");
     private static final long BOOKING_ID = 11L;
     private static final BigDecimal PRICE = new BigDecimal("25.00");
 
@@ -138,6 +137,27 @@ class BookingCancelTest {
     }
 
     /**
+     * hourlyCancelRefundsTheWholeHourlyTotal - Issue #14. This
+     * function cancels a three-hour booking on a listing priced per
+     * HOUR, 48 hours ahead, and refunds three hours, not one price.
+     */
+    @Test
+    void hourlyCancelRefundsTheWholeHourlyTotal() {
+        Instant startTime = Instant.now().plus(48, ChronoUnit.HOURS);
+        listing.setPriceUnit(PriceUnit.HOUR);
+        Booking booking = TestBookings.withId(BOOKING_ID, listing,
+                customer, startTime, startTime.plus(3, ChronoUnit.HOURS));
+        booking.setStatus(BookingStatus.CONFIRMED);
+        given(bookingRepository.findById(BOOKING_ID))
+                .willReturn(Optional.of(booking));
+        stubSave();
+
+        Booking stored = bookingService.cancel(customerCaller, BOOKING_ID);
+
+        assertThat(stored.getRefundAmount()).isEqualByComparingTo("75.00");
+    }
+
+    /**
      * otherCustomerCannotCancel - This function refuses a customer
      * who is not a party, and does not save.
      */
@@ -191,7 +211,7 @@ class BookingCancelTest {
             BigDecimal price) {
         listing.setPrice(price);
         Booking booking = TestBookings.withId(BOOKING_ID, listing,
-                customer, startTime, END);
+                customer, startTime, startTime.plus(1, ChronoUnit.HOURS));
         booking.setStatus(status);
         given(bookingRepository.findById(BOOKING_ID))
                 .willReturn(Optional.of(booking));

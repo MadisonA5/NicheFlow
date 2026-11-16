@@ -2,11 +2,13 @@ import {useState} from 'react'
 import {Link} from 'react-router-dom'
 import {getSession} from '../auth/authDataSource'
 import {createListing} from './createListingDataSource'
+import {priceUnitLabel} from './priceUnit'
 
 const initialForm = {
     title: '',
     category: '',
     price: '',
+    priceUnit: 'DAY',
     location: '',
     description: '',
 }
@@ -110,7 +112,18 @@ function CreateListingPage() {
                                 </select>
                             </label>
                             <label className="auth-field">
-                                <span>Price per day ($)</span>
+                                <span>Priced per</span>
+                                <select
+                                    name="priceUnit"
+                                    value={form.priceUnit}
+                                    onChange={handleChange}
+                                >
+                                    <option value="DAY">Day</option>
+                                    <option value="HOUR">Hour</option>
+                                </select>
+                            </label>
+                            <label className="auth-field">
+                                <span>Price per {priceUnitLabel(form.priceUnit)} ($)</span>
                                 <input
                                     name="price"
                                     type="number"

@@ -88,6 +88,30 @@ describe('booking data source', () => {
         })).rejects.toThrow('The requested dates are already booked')
     })
 
+    it('sends the chosen instants as-is for an hourly booking (issue #14)', async () => {
+        localStorage.setItem('nicheflow.session', JSON.stringify({
+            token: 'signed.jwt.token',
+            user: {id: 9, role: 'CUSTOMER'},
+        }))
+        const fetchMock = vi.fn().mockResolvedValue({
+            ok: true,
+            json: async () => ({id: 16, status: 'PENDING'}),
+        })
+        vi.stubGlobal('fetch', fetchMock)
+
+        await createBooking({
+            listingId: 3,
+            startTime: '2026-11-20T16:00:00.000Z',
+            endTime: '2026-11-20T18:00:00.000Z',
+        })
+
+        expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
+            listingId: 3,
+            startTime: '2026-11-20T16:00:00.000Z',
+            endTime: '2026-11-20T18:00:00.000Z',
+        })
+    })
+
     it('rejects a booking request without a signed-in session', async () => {
         const fetchMock = vi.fn()
         vi.stubGlobal('fetch', fetchMock)
