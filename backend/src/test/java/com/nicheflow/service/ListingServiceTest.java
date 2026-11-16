@@ -339,4 +339,31 @@ class ListingServiceTest {
         assertThat(pageableCaptor.getValue().getPageSize())
                 .isEqualTo(100);
     }
+
+    /**
+     * findActiveReturnsAnActiveListing - This function checks one
+     * active listing loads by id.
+     */
+    @Test
+    void findActiveReturnsAnActiveListing() {
+        Listing listing = TestListings.withId(21L, "Kayak", "SPORTS",
+                PRICE, owner);
+        given(listingRepository.findActiveById(21L))
+                .willReturn(Optional.of(listing));
+
+        assertThat(listingService.findActive(21L)).isSameAs(listing);
+    }
+
+    /**
+     * findActiveRejectsAMissingOrHiddenListing - This function checks a
+     * missing or deactivated listing is reported as not found.
+     */
+    @Test
+    void findActiveRejectsAMissingOrHiddenListing() {
+        given(listingRepository.findActiveById(99L))
+                .willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> listingService.findActive(99L))
+                .isInstanceOf(ListingNotFoundException.class);
+    }
 }

@@ -1,5 +1,5 @@
 import {useEffect, useState} from 'react'
-import {getListings} from './listingsDataSource'
+import {getListing} from './listingsDataSource'
 
 function useListing(listingId) {
     const [listing, setListing] = useState(null)
@@ -9,10 +9,9 @@ function useListing(listingId) {
     useEffect(() => {
         let isCurrent = true
 
-        getListings()
-            .then((results) => {
+        getListing(listingId)
+            .then((result) => {
                 if (!isCurrent) return
-                const result = results.find((item) => String(item.id) === listingId)
                 if (result) {
                     setListing(result)
                 } else {

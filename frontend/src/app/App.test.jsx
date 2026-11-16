@@ -3,10 +3,20 @@ import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 import App from './App.jsx'
 import {listings} from '../features/listings/listings'
 
+// The detail and booking pages load one listing from /api/listings/{id}.
+function singleListingResponse(url) {
+    const match = String(url).match(/^\/api\/listings\/(\d+)$/)
+    if (!match) return null
+    const listing = listings.find((item) => String(item.id) === match[1])
+    return Promise.resolve(listing
+        ? {ok: true, status: 200, json: async () => ({...listing, active: true})}
+        : {ok: false, status: 404, json: async () => ({})})
+}
+
 describe('NicheFlow landing page', () => {
     beforeEach(() => {
         localStorage.clear()
-        vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+        vi.stubGlobal('fetch', vi.fn((url) => singleListingResponse(url) ?? Promise.resolve({
             ok: true,
             json: async () => ({
                 items: listings.map(({
@@ -27,7 +37,7 @@ describe('NicheFlow landing page', () => {
                     active: true,
                 })),
             }),
-        }))
+        })))
     })
 
     afterEach(() => {
@@ -98,6 +108,46 @@ describe('NicheFlow landing page', () => {
         expect(await screen.findAllByRole('article')).toHaveLength(1)
         expect(
             screen.getByRole('heading', {name: 'Weekend bike rental'}),
+        ).toBeInTheDocument()
+        expect(screen.getByText('1 listing found')).toBeInTheDocument()
+    })
+
+    it('finds a listing that is on the second page of results', async () => {
+        // 21 active listings, served 20 per page like the real backend
+        const pagedListings = Array.from({length: 21}, (_, index) => ({
+            id: index + 1,
+            title: `Test Listing ${index + 1}`,
+            category: 'Workspace',
+            price: 10,
+            location: 'Camrose',
+            description: `Boundary test ${index + 1}`,
+            supplierId: 1,
+            active: true,
+        }))
+        vi.stubGlobal('fetch', vi.fn((url) => {
+            const page = Number(
+                new URL(url, 'http://localhost').searchParams.get('page') ?? 0)
+            return Promise.resolve({
+                ok: true,
+                json: async () => ({
+                    items: pagedListings.slice(page * 20, (page + 1) * 20),
+                    page,
+                    size: 20,
+                    totalElements: 21,
+                    totalPages: 2,
+                }),
+            })
+        }))
+        render(<App/>)
+
+        fireEvent.change(
+            screen.getByRole('searchbox', {name: 'What are you looking for?'}),
+            {target: {value: 'Test Listing 21'}},
+        )
+        fireEvent.click(screen.getByRole('button', {name: 'Search'}))
+
+        expect(
+            await screen.findByRole('heading', {name: 'Test Listing 21'}),
         ).toBeInTheDocument()
         expect(screen.getByText('1 listing found')).toBeInTheDocument()
     })
@@ -629,6 +679,8 @@ describe('NicheFlow landing page', () => {
             user: {id: 9, email: 'neighbor@example.com', role: 'CUSTOMER'},
         }))
         const fetchMock = vi.fn((url) => {
+            const single = singleListingResponse(url)
+            if (single) return single
             if (url.startsWith('/api/bookings/availability/')) {
                 return Promise.resolve({
                     ok: true,
@@ -709,7 +761,7 @@ describe('NicheFlow landing page', () => {
         checkoutBoundary.setDate(checkoutBoundary.getDate() + 2)
         const formatDate = (date) =>
             `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
-        const fetchMock = vi.fn((url) => Promise.resolve({
+        const fetchMock = vi.fn((url) => singleListingResponse(url) ?? Promise.resolve({
             ok: true,
             json: async () => url.startsWith('/api/bookings/availability/')
                 ? [{
