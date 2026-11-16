@@ -419,6 +419,54 @@ h2 {
   font-weight: 700;
 }
 
+/* Breadcrumb trail on inner pages, e.g. Explore › Kayak › Book */
+.breadcrumbs {
+  margin-bottom: 24px;
+  font-size: 14px;
+}
+
+.breadcrumbs ol {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.breadcrumbs li {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.breadcrumbs li + li::before {
+  content: "›";
+  color: #9aa093;
+}
+
+.breadcrumbs a {
+  color: #466b51;
+  font-weight: 700;
+}
+
+.breadcrumbs a:hover {
+  color: #355840;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.breadcrumbs [aria-current="page"] {
+  overflow: hidden;
+  max-width: 40ch;
+  color: #606359;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .view-listing-link {
   margin-top: 16px;
 }
