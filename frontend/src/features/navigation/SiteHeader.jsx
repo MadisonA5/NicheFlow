@@ -1,11 +1,14 @@
 import {useState} from 'react'
-import {Link, useNavigate} from 'react-router-dom'
+import {Link, NavLink, useLocation, useNavigate} from 'react-router-dom'
 import nicheFlowLogo from '../../assets/nicheflow logo1.png'
 import {getSession, signOut} from '../auth/authDataSource'
 
 function SiteHeader() {
     const [session, setSession] = useState(getSession)
     const navigate = useNavigate()
+    const {pathname} = useLocation()
+    // Browsing covers the home page and any listing or its booking page
+    const isExploring = pathname === '/' || /^\/listings\/\d+/.test(pathname)
 
     return (
         <header className="site-header">
@@ -14,7 +17,13 @@ function SiteHeader() {
             </Link>
 
             <nav className="main-nav" aria-label="Main navigation">
-                <a href="/#listings">Explore</a>
+                <a
+                    className={isExploring ? 'is-current' : undefined}
+                    href="/#listings"
+                    aria-current={isExploring ? 'true' : undefined}
+                >
+                    Explore
+                </a>
                 <a href="/#how-it-works">How it works</a>
             </nav>
 
@@ -22,13 +31,13 @@ function SiteHeader() {
                 {session ? (
                     <>
                         {session.user.role === 'SUPPLIER' && (
-                            <Link className="sign-in-button header-action-primary" to="/listings/new">
+                            <NavLink className="sign-in-button header-action-primary" to="/listings/new" end>
                                 Create listing
-                            </Link>
+                            </NavLink>
                         )}
-                        <Link className="sign-in-button header-action-secondary" to="/account">
+                        <NavLink className="sign-in-button header-action-secondary" to="/account" end>
                             My account
-                        </Link>
+                        </NavLink>
                         <button
                             className="sign-in-button header-action-secondary"
                             type="button"
@@ -42,9 +51,9 @@ function SiteHeader() {
                         </button>
                     </>
                 ) : (
-                    <Link className="sign-in-button header-action-primary" to="/sign-in">
+                    <NavLink className="sign-in-button header-action-primary" to="/sign-in" end>
                         Sign in
-                    </Link>
+                    </NavLink>
                 )}
             </div>
         </header>

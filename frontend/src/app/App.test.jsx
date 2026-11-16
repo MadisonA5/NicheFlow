@@ -116,6 +116,37 @@ describe('NicheFlow landing page', () => {
         expect(window.location.pathname).toBe('/')
     })
 
+    it('highlights where the user is in the header', async () => {
+        window.history.pushState({}, '', '/listings/1')
+        const {unmount} = render(<App/>)
+        await screen.findByRole('heading', {name: 'Sunny garden studio'})
+        expect(screen.getByRole('link', {name: 'Explore'}))
+            .toHaveAttribute('aria-current', 'true')
+        unmount()
+
+        window.history.pushState({}, '', '/sign-in')
+        render(<App/>)
+        const header = screen.getByRole('banner')
+        expect(within(header).getByRole('link', {name: 'Sign in'}))
+            .toHaveAttribute('aria-current', 'page')
+        expect(within(header).getByRole('link', {name: 'Explore'}))
+            .not.toHaveAttribute('aria-current')
+    })
+
+    it('highlights My account on the account page', async () => {
+        localStorage.setItem('nicheflow.session', JSON.stringify({
+            token: 'signed.jwt.token',
+            user: {id: 9, email: 'neighbor@example.com', role: 'CUSTOMER'},
+        }))
+        render(<App/>)
+
+        fireEvent.click(await screen.findByRole('link', {name: 'My account'}))
+
+        await screen.findByRole('heading', {name: 'My account'})
+        expect(screen.getByRole('link', {name: 'My account'}))
+            .toHaveAttribute('aria-current', 'page')
+    })
+
     it('filters listings by keyword without case sensitivity', async () => {
         render(<App/>)
 

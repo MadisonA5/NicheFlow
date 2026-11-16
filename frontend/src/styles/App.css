@@ -95,6 +95,26 @@
   background: #f2f4ec;
 }
 
+/* The page or section the user is on */
+.main-nav a.is-current {
+  color: #355840;
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-color: #466b51;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 8px;
+}
+
+.header-action-secondary[aria-current="page"] {
+  border-color: #466b51;
+  color: #355840;
+  background: #eef2ea;
+}
+
+.header-action-primary[aria-current="page"] {
+  box-shadow: 0 0 0 3px #d6e2d4;
+}
+
 .sign-in-button:hover,
 .search-button:hover {
   background: #355840;
