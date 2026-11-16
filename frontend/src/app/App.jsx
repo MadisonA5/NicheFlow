@@ -1,20 +1,19 @@
 import {useEffect, useState} from 'react'
-import {BrowserRouter, Link, Navigate, Route, Routes} from 'react-router-dom'
+import {BrowserRouter, Navigate, Route, Routes} from 'react-router-dom'
 import nicheFlowLogo from '../assets/nicheflow logo1.png'
 import AuthPage from '../features/auth/AuthPage'
-import {getSession, signOut} from '../features/auth/authDataSource'
 import AccountPage from '../features/account/AccountPage'
 import BookingPage from '../features/listings/BookingPage'
 import CreateListingPage from '../features/listings/CreateListingPage'
 import ListingCard from '../features/listings/ListingCard'
 import ListingDetailPage from '../features/listings/ListingDetailPage'
+import SiteHeader from '../features/navigation/SiteHeader'
 import {getListings} from '../features/listings/listingsDataSource'
 import {filterListings} from '../features/search/filterListings'
 import SearchBar from '../features/search/SearchBar'
 import '../styles/App.css'
 
 function HomePage() {
-    const [session, setSession] = useState(getSession)
     const [listings, setListings] = useState([])
     const [isLoading, setIsLoading] = useState(true)
     const [loadError, setLoadError] = useState('')
@@ -95,45 +94,7 @@ function HomePage() {
 
     return (
         <>
-            <header className="site-header">
-                <Link className="brand" to="/" aria-label="NicheFlow home">
-                    <img className="brand-logo" src={nicheFlowLogo} alt="NicheFlow"/>
-                </Link>
-
-                <nav className="main-nav" aria-label="Main navigation">
-                    <a href="#listings">Explore</a>
-                    <a href="#how-it-works">How it works</a>
-                </nav>
-
-                <div className="header-actions">
-                    {session ? (
-                        <>
-                            {session.user.role === 'SUPPLIER' && (
-                                <Link className="sign-in-button header-action-primary" to="/listings/new">
-                                    Create listing
-                                </Link>
-                            )}
-                            <Link className="sign-in-button header-action-secondary" to="/account">
-                                My account
-                            </Link>
-                            <button
-                                className="sign-in-button header-action-secondary"
-                                type="button"
-                                onClick={() => {
-                                    signOut()
-                                    setSession(null)
-                                }}
-                            >
-                                Sign out
-                            </button>
-                        </>
-                    ) : (
-                        <Link className="sign-in-button header-action-primary" to="/sign-in">
-                            Sign in
-                        </Link>
-                    )}
-                </div>
-            </header>
+            <SiteHeader/>
 
             <main>
                 <section className="welcome-section" aria-labelledby="welcome-heading">
