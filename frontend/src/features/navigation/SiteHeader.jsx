@@ -1,10 +1,11 @@
 import {useState} from 'react'
-import {Link} from 'react-router-dom'
+import {Link, useNavigate} from 'react-router-dom'
 import nicheFlowLogo from '../../assets/nicheflow logo1.png'
 import {getSession, signOut} from '../auth/authDataSource'
 
 function SiteHeader() {
     const [session, setSession] = useState(getSession)
+    const navigate = useNavigate()
 
     return (
         <header className="site-header">
@@ -13,8 +14,8 @@ function SiteHeader() {
             </Link>
 
             <nav className="main-nav" aria-label="Main navigation">
-                <a href="#listings">Explore</a>
-                <a href="#how-it-works">How it works</a>
+                <a href="/#listings">Explore</a>
+                <a href="/#how-it-works">How it works</a>
             </nav>
 
             <div className="header-actions">
@@ -34,6 +35,7 @@ function SiteHeader() {
                             onClick={() => {
                                 signOut()
                                 setSession(null)
+                                navigate('/')
                             }}
                         >
                             Sign out

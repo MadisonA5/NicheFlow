@@ -1,6 +1,5 @@
 import {useState} from 'react'
 import {Link, useNavigate} from 'react-router-dom'
-import nicheFlowLogo from '../../assets/nicheflow logo1.png'
 import {signIn, signUp} from './authDataSource'
 
 const pageContent = {
@@ -76,13 +75,6 @@ function AuthPage({mode}) {
 
     return (
         <div className="auth-page">
-            <header className="auth-header">
-                <Link className="auth-brand" to="/" aria-label="NicheFlow home">
-                    <img className="brand-logo" src={nicheFlowLogo} alt="NicheFlow"/>
-                </Link>
-                <Link className="auth-back-link" to="/">Back to explore</Link>
-            </header>
-
             <main className="auth-main">
                 <section className="auth-card" aria-labelledby="auth-heading">
                     <p className="eyebrow">Welcome to NicheFlow</p>

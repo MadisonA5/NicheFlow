@@ -86,6 +86,36 @@ describe('NicheFlow landing page', () => {
             .toHaveTextContent('Listings request failed (401).')
     })
 
+    it('shows the site header on pages other than the home page', async () => {
+        window.history.pushState({}, '', '/listings/1')
+        render(<App/>)
+
+        expect(await screen.findByRole('heading', {name: 'Sunny garden studio'}))
+            .toBeInTheDocument()
+        const navigation = screen.getByRole('navigation', {name: 'Main navigation'})
+        expect(within(navigation).getByRole('link', {name: 'Explore'}))
+            .toHaveAttribute('href', '/#listings')
+        expect(screen.getByRole('link', {name: 'NicheFlow home'}))
+            .toHaveAttribute('href', '/')
+        expect(screen.getByRole('link', {name: 'Sign in'})).toBeInTheDocument()
+    })
+
+    it('signs out from another page and returns home', async () => {
+        localStorage.setItem('nicheflow.session', JSON.stringify({
+            token: 'signed.jwt.token',
+            user: {id: 9, email: 'neighbor@example.com', role: 'CUSTOMER'},
+        }))
+        window.history.pushState({}, '', '/listings/1')
+        render(<App/>)
+
+        fireEvent.click(await screen.findByRole('button', {name: 'Sign out'}))
+
+        expect(await screen.findByRole('heading', {name: 'Find your next favorite place.'}))
+            .toBeInTheDocument()
+        expect(screen.getByRole('link', {name: 'Sign in'})).toBeInTheDocument()
+        expect(window.location.pathname).toBe('/')
+    })
+
     it('filters listings by keyword without case sensitivity', async () => {
         render(<App/>)
 

@@ -1,5 +1,5 @@
 import {useEffect, useState} from 'react'
-import {BrowserRouter, Navigate, Route, Routes} from 'react-router-dom'
+import {BrowserRouter, Navigate, Outlet, Route, Routes, useLocation} from 'react-router-dom'
 import nicheFlowLogo from '../assets/nicheflow logo1.png'
 import AuthPage from '../features/auth/AuthPage'
 import AccountPage from '../features/account/AccountPage'
@@ -94,7 +94,6 @@ function HomePage() {
 
     return (
         <>
-            <SiteHeader/>
 
             <main>
                 <section className="welcome-section" aria-labelledby="welcome-heading">
@@ -221,19 +220,33 @@ function HomePage() {
     )
 }
 
+function SiteLayout() {
+    const location = useLocation()
+
+    // Keyed by page so the header re-reads the session after signing in or out
+    return (
+        <>
+            <SiteHeader key={location.pathname}/>
+            <Outlet/>
+        </>
+    )
+}
+
 function App() {
     return (
         <BrowserRouter>
             <Routes>
-                <Route path="/" element={<HomePage/>}/>
-                <Route path="/sign-in" element={<AuthPage mode="sign-in"/>}/>
-                <Route path="/sign-up" element={<AuthPage mode="sign-up"/>}/>
-                <Route path="/forgot-password" element={<AuthPage mode="forgot-password"/>}/>
-                <Route path="/account" element={<AccountPage/>}/>
-                <Route path="/listings/new" element={<CreateListingPage/>}/>
-                <Route path="/listings/:listingId" element={<ListingDetailPage/>}/>
-                <Route path="/listings/:listingId/book" element={<BookingPage/>}/>
-                <Route path="*" element={<Navigate to="/" replace/>}/>
+                <Route element={<SiteLayout/>}>
+                    <Route path="/" element={<HomePage/>}/>
+                    <Route path="/sign-in" element={<AuthPage mode="sign-in"/>}/>
+                    <Route path="/sign-up" element={<AuthPage mode="sign-up"/>}/>
+                    <Route path="/forgot-password" element={<AuthPage mode="forgot-password"/>}/>
+                    <Route path="/account" element={<AccountPage/>}/>
+                    <Route path="/listings/new" element={<CreateListingPage/>}/>
+                    <Route path="/listings/:listingId" element={<ListingDetailPage/>}/>
+                    <Route path="/listings/:listingId/book" element={<BookingPage/>}/>
+                    <Route path="*" element={<Navigate to="/" replace/>}/>
+                </Route>
             </Routes>
         </BrowserRouter>
     )
