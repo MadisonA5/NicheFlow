@@ -35,8 +35,9 @@ function addOneDay(value) {
 function overlapsUnavailablePeriod(start, end, periods) {
     if (!start || !end || start >= end) return false
     return periods.some((period) => {
-        const bookedStart = period.startTime.slice(0, 10)
-        const bookedEnd = period.endTime.slice(0, 10)
+        // To shade the viewer's local dates, not the UTC dates
+        const bookedStart = dateKey(new Date(period.startTime))
+        const bookedEnd = dateKey(new Date(period.endTime))
         return start < bookedEnd && bookedStart < end
     })
 }

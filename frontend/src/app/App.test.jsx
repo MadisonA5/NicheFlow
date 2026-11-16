@@ -744,8 +744,8 @@ describe('NicheFlow landing page', () => {
             }),
             body: JSON.stringify({
                 listingId: listings[0].id,
-                startTime: `${formatDate(tomorrow)}T00:00:00Z`,
-                endTime: `${formatDate(checkout)}T00:00:00Z`,
+                startTime: new Date(`${formatDate(tomorrow)}T15:00:00`).toISOString(),
+                endTime: new Date(`${formatDate(checkout)}T11:00:00`).toISOString(),
             }),
         }))
     })
@@ -765,8 +765,8 @@ describe('NicheFlow landing page', () => {
             ok: true,
             json: async () => url.startsWith('/api/bookings/availability/')
                 ? [{
-                    startTime: `${formatDate(tomorrow)}T00:00:00Z`,
-                    endTime: `${formatDate(checkoutBoundary)}T00:00:00Z`,
+                    startTime: new Date(`${formatDate(tomorrow)}T15:00:00`).toISOString(),
+                    endTime: new Date(`${formatDate(checkoutBoundary)}T11:00:00`).toISOString(),
                 }]
                 : {items: listings.map((listing) => ({...listing, active: true}))},
         }))
