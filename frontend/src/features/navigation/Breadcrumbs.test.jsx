@@ -44,4 +44,38 @@ describe('Breadcrumbs', () => {
         expect(within(trail).getByText('Kayak rental'))
             .toHaveAttribute('aria-current', 'page')
     })
+
+    it('shows a single item as the current page with no links', () => {
+        renderBreadcrumbs([{label: 'Explore'}])
+
+        const trail = screen.getByRole('navigation', {name: 'Breadcrumb'})
+        expect(within(trail).queryAllByRole('link')).toHaveLength(0)
+        expect(within(trail).getByText('Explore'))
+            .toHaveAttribute('aria-current', 'page')
+    })
+
+    it('keeps the items in the order given', () => {
+        renderBreadcrumbs([
+            {label: 'Explore', to: '/'},
+            {label: 'Kayak rental', to: '/listings/3'},
+            {label: 'Book'},
+        ])
+
+        const labels = within(screen.getByRole('navigation', {name: 'Breadcrumb'}))
+            .getAllByRole('listitem')
+            .map((item) => item.textContent)
+        expect(labels).toEqual(['Explore', 'Kayak rental', 'Book'])
+    })
+
+    it('shows every item even when two have the same label', () => {
+        renderBreadcrumbs([
+            {label: 'Explore', to: '/'},
+            {label: 'Explore'},
+        ])
+
+        const trail = screen.getByRole('navigation', {name: 'Breadcrumb'})
+        expect(within(trail).getAllByRole('listitem')).toHaveLength(2)
+        expect(within(trail).getByRole('link', {name: 'Explore'}))
+            .toHaveAttribute('href', '/')
+    })
 })
