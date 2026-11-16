@@ -128,6 +128,8 @@ describe('NicheFlow landing page', () => {
         await screen.findByRole('heading', {name: 'Sunny garden studio'})
         expect(screen.getByRole('link', {name: 'Explore'}))
             .toHaveAttribute('aria-current', 'true')
+        expect(screen.getByRole('link', {name: 'Explore'}))
+            .toHaveClass('is-current')
         unmount()
 
         window.history.pushState({}, '', '/sign-in')
@@ -222,6 +224,33 @@ describe('NicheFlow landing page', () => {
             .toHaveAttribute('aria-current', 'page')
         expect(within(header).getByRole('link', {name: 'Explore'}))
             .not.toHaveAttribute('aria-current')
+    })
+
+    it('highlights Explore on the home page', async () => {
+        render(<App/>)
+
+        const explore = within(await findSiteHeader())
+            .getByRole('link', {name: 'Explore'})
+        expect(explore).toHaveAttribute('aria-current', 'true')
+        expect(explore).toHaveClass('is-current')
+        expect(within(await findSiteHeader()).getByRole('link', {name: 'How it works'}))
+            .not.toHaveClass('is-current')
+    })
+
+    it('signs out on the home page and shows Sign in again', async () => {
+        localStorage.setItem('nicheflow.session', JSON.stringify({
+            token: 'signed.jwt.token',
+            user: {id: 9, email: 'neighbor@example.com', role: 'CUSTOMER'},
+        }))
+        render(<App/>)
+
+        fireEvent.click(await screen.findByRole('button', {name: 'Sign out'}))
+
+        const header = await findSiteHeader()
+        expect(within(header).getByRole('link', {name: 'Sign in'}))
+            .toBeInTheDocument()
+        expect(within(header).queryByRole('button', {name: 'Sign out'}))
+            .not.toBeInTheDocument()
     })
 
     it('filters listings by keyword without case sensitivity', async () => {
