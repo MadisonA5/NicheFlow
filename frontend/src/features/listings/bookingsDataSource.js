@@ -1,7 +1,13 @@
 import {getSession} from '../auth/authDataSource'
 
-function toUtcMidnight(date) {
-    return `${date}T00:00:00Z`
+// Local wall-clock times for a stay, read in the customer's own timezone.
+export const CHECK_IN_TIME = '15:00'
+export const CHECK_OUT_TIME = '11:00'
+
+// A date and time with no offset is parsed as local time, so this is
+// the customer's local moment, sent to the API as a UTC instant.
+function toUtcInstant(date, time) {
+    return new Date(`${date}T${time}:00`).toISOString()
 }
 
 export async function getUnavailablePeriods(listingId) {
@@ -42,8 +48,8 @@ export async function createBooking({listingId, checkIn, checkOut}) {
         },
         body: JSON.stringify({
             listingId: Number(listingId),
-            startTime: toUtcMidnight(checkIn),
-            endTime: toUtcMidnight(checkOut),
+            startTime: toUtcInstant(checkIn, CHECK_IN_TIME),
+            endTime: toUtcInstant(checkOut, CHECK_OUT_TIME),
         }),
     })
     const payload = await response.json().catch(() => null)
