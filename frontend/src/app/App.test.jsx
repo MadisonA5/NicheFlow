@@ -3,6 +3,12 @@ import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 import App from './App.jsx'
 import {listings} from '../features/listings/listings'
 
+// The site header is the <header> that holds the main navigation
+async function findSiteHeader() {
+    const navigation = await screen.findByRole('navigation', {name: 'Main navigation'})
+    return navigation.closest('header')
+}
+
 describe('NicheFlow landing page', () => {
     beforeEach(() => {
         localStorage.clear()
@@ -145,6 +151,77 @@ describe('NicheFlow landing page', () => {
         await screen.findByRole('heading', {name: 'My account'})
         expect(screen.getByRole('link', {name: 'My account'}))
             .toHaveAttribute('aria-current', 'page')
+    })
+
+    it.each([
+        '/',
+        '/listings/1',
+        '/listings/1/book',
+        '/account',
+        '/listings/new',
+        '/sign-in',
+        '/sign-up',
+        '/forgot-password',
+    ])('shows the site header on %s', async (path) => {
+        window.history.pushState({}, '', path)
+        render(<App/>)
+
+        const header = await findSiteHeader()
+        expect(within(header).getByRole('link', {name: 'NicheFlow home'}))
+            .toBeInTheDocument()
+        expect(screen.getAllByRole('navigation', {name: 'Main navigation'}))
+            .toHaveLength(1)
+    })
+
+    it('shows a supplier Create listing, My account and Sign out', async () => {
+        localStorage.setItem('nicheflow.session', JSON.stringify({
+            token: 'signed.jwt.token',
+            user: {id: 4, email: 'host@example.com', role: 'SUPPLIER'},
+        }))
+        render(<App/>)
+
+        const header = await findSiteHeader()
+        expect(within(header).getByRole('link', {name: 'Create listing'}))
+            .toHaveAttribute('href', '/listings/new')
+        expect(within(header).getByRole('link', {name: 'My account'}))
+            .toHaveAttribute('href', '/account')
+        expect(within(header).getByRole('button', {name: 'Sign out'}))
+            .toBeInTheDocument()
+        expect(within(header).queryByRole('link', {name: 'Sign in'}))
+            .not.toBeInTheDocument()
+    })
+
+    it('shows a customer My account and Sign out but not Create listing', async () => {
+        localStorage.setItem('nicheflow.session', JSON.stringify({
+            token: 'signed.jwt.token',
+            user: {id: 9, email: 'neighbor@example.com', role: 'CUSTOMER'},
+        }))
+        render(<App/>)
+
+        const header = await findSiteHeader()
+        expect(within(header).getByRole('link', {name: 'My account'}))
+            .toBeInTheDocument()
+        expect(within(header).getByRole('button', {name: 'Sign out'}))
+            .toBeInTheDocument()
+        expect(within(header).queryByRole('link', {name: 'Create listing'}))
+            .not.toBeInTheDocument()
+        expect(within(header).queryByRole('link', {name: 'Sign in'}))
+            .not.toBeInTheDocument()
+    })
+
+    it('highlights Create listing on the create listing page', async () => {
+        localStorage.setItem('nicheflow.session', JSON.stringify({
+            token: 'signed.jwt.token',
+            user: {id: 4, email: 'host@example.com', role: 'SUPPLIER'},
+        }))
+        window.history.pushState({}, '', '/listings/new')
+        render(<App/>)
+
+        const header = await findSiteHeader()
+        expect(within(header).getByRole('link', {name: 'Create listing'}))
+            .toHaveAttribute('aria-current', 'page')
+        expect(within(header).getByRole('link', {name: 'Explore'}))
+            .not.toHaveAttribute('aria-current')
     })
 
     it('filters listings by keyword without case sensitivity', async () => {
