@@ -285,6 +285,53 @@ describe('NicheFlow landing page', () => {
             .toBeInTheDocument()
     })
 
+    it('uses the title of the listing that is open in the breadcrumbs', async () => {
+        window.history.pushState({}, '', '/listings/2/book')
+        render(<App/>)
+
+        const trail = await screen.findByRole('navigation', {name: 'Breadcrumb'})
+        expect(within(trail).getByRole('link', {name: 'Weekend bike rental'}))
+            .toHaveAttribute('href', '/listings/2')
+        expect(within(trail).queryByText('Sunny garden studio'))
+            .not.toBeInTheDocument()
+    })
+
+    it('goes home from the Explore breadcrumb on the booking page', async () => {
+        window.history.pushState({}, '', '/listings/1/book')
+        render(<App/>)
+
+        const trail = await screen.findByRole('navigation', {name: 'Breadcrumb'})
+        fireEvent.click(within(trail).getByRole('link', {name: 'Explore'}))
+
+        expect(await screen.findByRole('heading', {name: 'Find your next favorite place.'}))
+            .toBeInTheDocument()
+        expect(window.location.pathname).toBe('/')
+    })
+
+    it.each(['/', '/sign-in', '/account'])(
+        'does not show breadcrumbs on %s',
+        async (path) => {
+            window.history.pushState({}, '', path)
+            render(<App/>)
+
+            await findSiteHeader()
+            expect(screen.queryByRole('navigation', {name: 'Breadcrumb'}))
+                .not.toBeInTheDocument()
+        },
+    )
+
+    it('keeps a way back when a listing cannot be found', async () => {
+        window.history.pushState({}, '', '/listings/999')
+        render(<App/>)
+
+        expect(await screen.findByRole('alert'))
+            .toHaveTextContent('This listing could not be found.')
+        expect(screen.queryByRole('navigation', {name: 'Breadcrumb'}))
+            .not.toBeInTheDocument()
+        expect(screen.getByRole('link', {name: 'Back to explore'}))
+            .toHaveAttribute('href', '/')
+    })
+
     it('filters listings by keyword without case sensitivity', async () => {
         render(<App/>)
 
