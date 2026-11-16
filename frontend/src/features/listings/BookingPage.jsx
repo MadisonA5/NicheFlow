@@ -3,6 +3,7 @@ import {Link, useParams} from 'react-router-dom'
 import {getSession} from '../auth/authDataSource'
 import {createBooking, getUnavailablePeriods} from './bookingsDataSource'
 import Breadcrumbs from '../navigation/Breadcrumbs'
+import usePageTitle from '../navigation/usePageTitle'
 import useListing from './useListing'
 
 function getToday() {
@@ -57,6 +58,7 @@ function formatDate(value) {
 function BookingPage() {
     const {listingId} = useParams()
     const {listing, isLoading, loadError} = useListing(listingId)
+    usePageTitle(listing ? `Book ${listing.title}` : undefined)
     const [checkIn, setCheckIn] = useState('')
     const [checkOut, setCheckOut] = useState('')
     const [availabilityResult, setAvailabilityResult] = useState(null)

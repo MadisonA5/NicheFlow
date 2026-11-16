@@ -2,6 +2,7 @@ import {useState} from 'react'
 import {Link} from 'react-router-dom'
 import {getSession} from '../auth/authDataSource'
 import {createListing} from './createListingDataSource'
+import usePageTitle from '../navigation/usePageTitle'
 
 const initialForm = {
     title: '',
@@ -12,6 +13,7 @@ const initialForm = {
 }
 
 function CreateListingPage() {
+    usePageTitle('Create a listing')
     const session = getSession()
     const [form, setForm] = useState(initialForm)
     const [message, setMessage] = useState('')

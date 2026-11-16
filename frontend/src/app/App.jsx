@@ -9,12 +9,14 @@ import ListingCard from '../features/listings/ListingCard'
 import ListingDetailPage from '../features/listings/ListingDetailPage'
 import SiteHeader from '../features/navigation/SiteHeader'
 import {scrollToSection} from '../features/navigation/scrollToSection'
+import usePageTitle from '../features/navigation/usePageTitle'
 import {getListings} from '../features/listings/listingsDataSource'
 import {filterListings} from '../features/search/filterListings'
 import SearchBar from '../features/search/SearchBar'
 import '../styles/App.css'
 
 function HomePage() {
+    usePageTitle()
     const [listings, setListings] = useState([])
     const [isLoading, setIsLoading] = useState(true)
     const [loadError, setLoadError] = useState('')

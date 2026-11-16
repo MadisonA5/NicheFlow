@@ -1,6 +1,7 @@
 import {useEffect, useState} from 'react'
 import {Link} from 'react-router-dom'
 import {getSession} from '../auth/authDataSource'
+import usePageTitle from '../navigation/usePageTitle'
 import {
     acceptBooking,
     deactivateListing,
@@ -18,6 +19,7 @@ function formatDateTime(value) {
 }
 
 function AccountPage() {
+    usePageTitle('My account')
     const session = getSession()
     const [account, setAccount] = useState(null)
     const [isLoading, setIsLoading] = useState(true)

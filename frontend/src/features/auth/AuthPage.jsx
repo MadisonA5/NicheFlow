@@ -1,6 +1,7 @@
 import {useState} from 'react'
 import {Link, useNavigate} from 'react-router-dom'
 import {signIn, signUp} from './authDataSource'
+import usePageTitle from '../navigation/usePageTitle'
 
 const pageContent = {
     'sign-in': {
@@ -33,7 +34,14 @@ const fieldDetails = {
     },
 }
 
+const pageTitles = {
+    'sign-in': 'Sign in',
+    'sign-up': 'Create an account',
+    'forgot-password': 'Reset your password',
+}
+
 function AuthPage({mode}) {
+    usePageTitle(pageTitles[mode])
     const [message, setMessage] = useState('')
     const [isSubmitting, setIsSubmitting] = useState(false)
     const navigate = useNavigate()

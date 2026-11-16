@@ -404,6 +404,35 @@ describe('NicheFlow landing page', () => {
         scroll.mockRestore()
     })
 
+    it.each([
+        ['/', 'NicheFlow | Find your next favorite place'],
+        ['/listings/1', 'Sunny garden studio · NicheFlow'],
+        ['/listings/1/book', 'Book Sunny garden studio · NicheFlow'],
+        ['/listings/999', 'Listing not found · NicheFlow'],
+        ['/account', 'My account · NicheFlow'],
+        ['/listings/new', 'Create a listing · NicheFlow'],
+        ['/sign-in', 'Sign in · NicheFlow'],
+        ['/sign-up', 'Create an account · NicheFlow'],
+        ['/forgot-password', 'Reset your password · NicheFlow'],
+    ])('sets the browser tab title on %s', async (path, title) => {
+        document.title = ''
+        window.history.pushState({}, '', path)
+        render(<App/>)
+
+        await waitFor(() => expect(document.title).toBe(title))
+    })
+
+    it('updates the tab title when moving between pages', async () => {
+        render(<App/>)
+        await waitFor(() => expect(document.title)
+            .toBe('NicheFlow | Find your next favorite place'))
+
+        fireEvent.click(await screen.findByRole('link', {name: 'Sunny garden studio'}))
+
+        await waitFor(() => expect(document.title)
+            .toBe('Sunny garden studio · NicheFlow'))
+    })
+
     it('filters listings by keyword without case sensitivity', async () => {
         render(<App/>)
 

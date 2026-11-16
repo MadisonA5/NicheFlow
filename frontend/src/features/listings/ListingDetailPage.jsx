@@ -1,10 +1,12 @@
 import {Link, useParams} from 'react-router-dom'
 import Breadcrumbs from '../navigation/Breadcrumbs'
+import usePageTitle from '../navigation/usePageTitle'
 import useListing from './useListing'
 
 function ListingDetailPage() {
     const {listingId} = useParams()
     const {listing, isLoading, loadError} = useListing(listingId)
+    usePageTitle(loadError ? 'Listing not found' : listing?.title)
 
     if (isLoading) {
         return <p className="listing-page-message" role="status">Loading listing…</p>
