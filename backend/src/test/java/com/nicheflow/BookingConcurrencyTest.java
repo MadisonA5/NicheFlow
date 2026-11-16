@@ -48,8 +48,8 @@ import com.nicheflow.repository.BookingRepository;
 class BookingConcurrencyTest {
 
     private static final String PASSWORD = "correct-horse";
-    private static final String WINDOW_START = "2026-11-01T15:00:00Z";
-    private static final String WINDOW_END = "2026-11-01T16:00:00Z";
+    private static final String WINDOW_START = "2031-11-01T15:00:00Z";
+    private static final String WINDOW_END = "2031-11-01T16:00:00Z";
     private static final int CUSTOMER_COUNT = 2;
 
     @Autowired
@@ -130,8 +130,8 @@ class BookingConcurrencyTest {
         mockMvc.perform(post("/api/bookings")
                 .header(HttpHeaders.AUTHORIZATION, bearer(secondToken))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(bookingBody(listingId, "2026-11-01T15:30:00Z",
-                        "2026-11-01T16:30:00Z")))
+                .content(bookingBody(listingId, "2031-11-01T15:30:00Z",
+                        "2031-11-01T16:30:00Z")))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.title").value("Booking conflict"));
 
@@ -162,7 +162,7 @@ class BookingConcurrencyTest {
                 .header(HttpHeaders.AUTHORIZATION, bearer(secondToken))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(bookingBody(listingId, WINDOW_END,
-                        "2026-11-01T17:00:00Z")))
+                        "2031-11-01T17:00:00Z")))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.status").value("PENDING"));
 

@@ -21,9 +21,12 @@ package com.nicheflow.service;
 
 import java.math.BigDecimal;
 import java.sql.SQLException;
+import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.stereotype.Service;
@@ -63,10 +66,17 @@ public class BookingService {
     static final String CHANGE_DENIED =
             "You are not allowed to change this booking";
 
+    /**
+     * The least notice a new booking may give. A start sooner than
+     * this, or already in the past, is not an open slot (BK-01).
+     */
+    static final Duration MINIMUM_NOTICE = Duration.ofMinutes(15);
+
     private final BookingRepository bookingRepository;
     private final ListingRepository listingRepository;
     private final UserRepository userRepository;
     private final PaymentClient paymentClient;
+    private final Clock clock;
 
     /**
      * BookingService - This function stores the repositories and the
@@ -79,13 +89,35 @@ public class BookingService {
      * userRepository - The users table access point
      * paymentClient - The mocked Stripe charge port
      */
+    @Autowired
     public BookingService(BookingRepository bookingRepository,
             ListingRepository listingRepository,
             UserRepository userRepository, PaymentClient paymentClient) {
+        this(bookingRepository, listingRepository, userRepository,
+                paymentClient, Clock.systemUTC());
+    }
+
+    /**
+     * BookingService - This function builds the service with an
+     * injectable clock so the past-start check and the refund timing
+     * can be tested at a frozen moment.
+     *
+     * Parameters:
+     * bookingRepository - The bookings table access point
+     * listingRepository - The listings table access point
+     * userRepository - The users table access point
+     * paymentClient - The mocked Stripe charge port
+     * clock - The clock that says what "now" is
+     */
+    BookingService(BookingRepository bookingRepository,
+            ListingRepository listingRepository,
+            UserRepository userRepository, PaymentClient paymentClient,
+            Clock clock) {
         this.bookingRepository = bookingRepository;
         this.listingRepository = listingRepository;
         this.userRepository = userRepository;
         this.paymentClient = paymentClient;
+        this.clock = clock;
     }
 
     /**
@@ -113,6 +145,9 @@ public class BookingService {
 
         // To reject a window the bookings check constraint would fail
         rejectWindowThatDoesNotMoveForward(startTime, endTime);
+
+        // To reject a slot that has already started or starts too soon
+        rejectStartWithoutMinimumNotice(startTime);
 
         // To attach the User row that matches the JWT subject
         User customer = loadCallerAccount(caller);
@@ -243,7 +278,7 @@ public class BookingService {
         BigDecimal refund = RefundCalculator.calculateRefund(
                 booking.getListing().getPrice(),
                 booking.getStartTime(),
-                Instant.now());
+                clock.instant());
 
         // To store the refund and the cancelled status together
         booking.setRefundAmount(refund);
@@ -536,6 +571,21 @@ public class BookingService {
         if (!endTime.isAfter(startTime)) {
             throw new InvalidBookingException(
                     "endTime must be after startTime");
+        }
+    }
+
+    /**
+     * rejectStartWithoutMinimumNotice - This function throws when the
+     * start is in the past or less than MINIMUM_NOTICE from now.
+     *
+     * Parameters:
+     * startTime - The slot start, a UTC instant
+     */
+    private void rejectStartWithoutMinimumNotice(Instant startTime) {
+        Instant earliestStart = clock.instant().plus(MINIMUM_NOTICE);
+        if (startTime.isBefore(earliestStart)) {
+            throw new InvalidBookingException(
+                    "startTime must be in the future");
         }
     }
 

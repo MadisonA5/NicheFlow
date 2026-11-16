@@ -11,13 +11,15 @@
 package com.nicheflow.service;
 
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.Optional;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -49,6 +51,9 @@ class BookingCancelTest {
 
     private static final Instant END = Instant.parse(
             "2026-12-01T16:00:00Z");
+    /** The frozen "now" every cancel in this class happens at. */
+    private static final Instant NOW = Instant.parse(
+            "2026-11-15T12:00:00Z");
     private static final long BOOKING_ID = 11L;
     private static final BigDecimal PRICE = new BigDecimal("25.00");
 
@@ -79,8 +84,19 @@ class BookingCancelTest {
     @Mock
     private PaymentClient paymentClient;
 
-    @InjectMocks
     private BookingService bookingService;
+
+    /**
+     * setUp - This function builds the service with a clock frozen at
+     * NOW so the refund timing uses the same clock as the booking
+     * service instead of the machine time.
+     */
+    @BeforeEach
+    void setUp() {
+        bookingService = new BookingService(bookingRepository,
+                listingRepository, userRepository, paymentClient,
+                Clock.fixed(NOW, ZoneOffset.UTC));
+    }
 
     /**
      * customerCancelMoreThan24HoursAheadStoresTheFullPrice - This
@@ -89,7 +105,7 @@ class BookingCancelTest {
      */
     @Test
     void customerCancelMoreThan24HoursAheadStoresTheFullPrice() {
-        Instant startTime = Instant.now().plus(48, ChronoUnit.HOURS);
+        Instant startTime = NOW.plus(48, ChronoUnit.HOURS);
         Booking booking = load(BookingStatus.PENDING, startTime, PRICE);
         stubSave();
 
@@ -108,7 +124,7 @@ class BookingCancelTest {
      */
     @Test
     void supplierCancelInside24HoursStoresHalfThePrice() {
-        Instant startTime = Instant.now().plus(2, ChronoUnit.HOURS);
+        Instant startTime = NOW.plus(2, ChronoUnit.HOURS);
         BigDecimal price = new BigDecimal("10.01");
         Booking booking = load(BookingStatus.CONFIRMED, startTime, price);
         stubSave();
@@ -126,7 +142,7 @@ class BookingCancelTest {
      */
     @Test
     void adminCancelAfterTheStartStoresZero() {
-        Instant startTime = Instant.now().minus(1, ChronoUnit.HOURS);
+        Instant startTime = NOW.minus(1, ChronoUnit.HOURS);
         Booking booking = load(BookingStatus.PENDING, startTime, PRICE);
         stubSave();
 
@@ -143,7 +159,7 @@ class BookingCancelTest {
      */
     @Test
     void otherCustomerCannotCancel() {
-        Instant startTime = Instant.now().plus(48, ChronoUnit.HOURS);
+        Instant startTime = NOW.plus(48, ChronoUnit.HOURS);
         Booking booking = load(BookingStatus.PENDING, startTime, PRICE);
 
         assertThatThrownBy(() -> bookingService.cancel(otherCustomerCaller,
@@ -162,7 +178,7 @@ class BookingCancelTest {
      */
     @Test
     void completedBookingCannotBeCancelled() {
-        Instant startTime = Instant.now().plus(48, ChronoUnit.HOURS);
+        Instant startTime = NOW.plus(48, ChronoUnit.HOURS);
         Booking booking = load(BookingStatus.COMPLETED, startTime, PRICE);
 
         assertThatThrownBy(() -> bookingService.cancel(customerCaller,

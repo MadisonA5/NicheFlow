@@ -112,6 +112,20 @@ class BookingBlackBoxTest {
                 .andExpect(status().isBadRequest());
     }
 
+    /**
+     * Issue #12: a window that starts in the past is not an open slot
+     * (BK-01), so it is rejected (400) and nothing is stored.
+     */
+    @Test
+    void startInThePastIsRejected() throws Exception {
+        long listingId = createListing(login("SUPPLIER"));
+        book(login("CUSTOMER"), listingId, "2020-09-01T00:00:00Z",
+                "2020-09-04T00:00:00Z")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail")
+                        .value("startTime must be in the future"));
+    }
+
     /** Boundary: the smallest legal window, one second long, works. */
     @Test
     void oneSecondWindowIsAccepted() throws Exception {

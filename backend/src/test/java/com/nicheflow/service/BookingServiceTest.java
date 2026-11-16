@@ -11,14 +11,17 @@ package com.nicheflow.service;
 
 import java.math.BigDecimal;
 import java.sql.SQLException;
+import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.Optional;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.CannotAcquireLockException;
@@ -55,6 +58,8 @@ class BookingServiceTest {
             "2026-11-01T15:00:00Z");
     private static final Instant END = Instant.parse(
             "2026-11-01T16:00:00Z");
+    /** The frozen "now" for these tests, one day before START. */
+    private static final Instant NOW = START.minus(Duration.ofDays(1));
 
     private final User customer = TestUsers.withId(9L, "bob@example.com",
             "$2a$10$hashed", Role.CUSTOMER);
@@ -79,11 +84,21 @@ class BookingServiceTest {
     @Mock
     private PaymentClient paymentClient;
 
-    @InjectMocks
     private BookingService bookingService;
 
     @Captor
     private ArgumentCaptor<Booking> savedBooking;
+
+    /**
+     * setUp - This function builds the service with a clock frozen at
+     * NOW so the past-start check does not depend on today's date.
+     */
+    @BeforeEach
+    void setUp() {
+        bookingService = new BookingService(bookingRepository,
+                listingRepository, userRepository, paymentClient,
+                Clock.fixed(NOW, ZoneOffset.UTC));
+    }
 
     /**
      * createStoresAPendingBookingForTheCustomer - This function
@@ -176,6 +191,61 @@ class BookingServiceTest {
 
         verify(bookingRepository, never()).saveAndFlush(any());
         verify(listingRepository, never()).findById(any());
+    }
+
+    /**
+     * createRejectsAStartInThePast - Issue #12. This function proves
+     * a window that started one second before now is refused and
+     * never reaches the listing lookup or the insert.
+     */
+    @Test
+    void createRejectsAStartInThePast() {
+        Instant start = NOW.minusSeconds(1);
+
+        assertThatThrownBy(() -> bookingService.create(customerCaller,
+                3L, start, start.plus(Duration.ofDays(3))))
+                .isInstanceOf(InvalidBookingException.class)
+                .hasMessage("startTime must be in the future");
+
+        verify(bookingRepository, never()).saveAndFlush(any());
+        verify(listingRepository, never()).findById(any());
+    }
+
+    /**
+     * createRejectsAStartJustInsideTheMinimumNotice - This function
+     * proves a start one second short of the minimum notice is
+     * refused, so the exact present moment is not bookable either.
+     */
+    @Test
+    void createRejectsAStartJustInsideTheMinimumNotice() {
+        Instant start = NOW.plus(BookingService.MINIMUM_NOTICE)
+                .minusSeconds(1);
+
+        assertThatThrownBy(() -> bookingService.create(customerCaller,
+                3L, start, start.plus(Duration.ofHours(1))))
+                .isInstanceOf(InvalidBookingException.class)
+                .hasMessage("startTime must be in the future");
+
+        verify(bookingRepository, never()).saveAndFlush(any());
+    }
+
+    /**
+     * createAcceptsAStartExactlyAtTheMinimumNotice - This function
+     * proves the boundary itself, now plus the minimum notice, is
+     * still an open slot.
+     */
+    @Test
+    void createAcceptsAStartExactlyAtTheMinimumNotice() {
+        Instant start = NOW.plus(BookingService.MINIMUM_NOTICE);
+        givenReadyListing();
+        given(bookingRepository.saveAndFlush(any(Booking.class)))
+                .willAnswer(call -> call.getArgument(0));
+
+        Booking stored = bookingService.create(customerCaller, 3L, start,
+                start.plus(Duration.ofHours(1)));
+
+        assertThat(stored.getStartTime()).isEqualTo(start);
+        assertThat(stored.getStatus()).isEqualTo(BookingStatus.PENDING);
     }
 
     /**
