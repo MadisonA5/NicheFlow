@@ -1,4 +1,5 @@
 import {Link, useParams} from 'react-router-dom'
+import Breadcrumbs from '../navigation/Breadcrumbs'
 import useListing from './useListing'
 
 function ListingDetailPage() {
@@ -19,7 +20,12 @@ function ListingDetailPage() {
 
     return (
         <main className="listing-page">
-            <Link className="back-link" to="/">← Back to explore</Link>
+            <Breadcrumbs
+                items={[
+                    {label: 'Explore', to: '/'},
+                    {label: listing.title},
+                ]}
+            />
             <article className="listing-detail">
                 <div className={`listing-detail-art ${listing.color}`} aria-hidden="true">
                     <span>{listing.icon}</span>

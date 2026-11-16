@@ -126,10 +126,10 @@ describe('NicheFlow landing page', () => {
         window.history.pushState({}, '', '/listings/1')
         const {unmount} = render(<App/>)
         await screen.findByRole('heading', {name: 'Sunny garden studio'})
-        expect(screen.getByRole('link', {name: 'Explore'}))
-            .toHaveAttribute('aria-current', 'true')
-        expect(screen.getByRole('link', {name: 'Explore'}))
-            .toHaveClass('is-current')
+        const headerExplore = within(await findSiteHeader())
+            .getByRole('link', {name: 'Explore'})
+        expect(headerExplore).toHaveAttribute('aria-current', 'true')
+        expect(headerExplore).toHaveClass('is-current')
         unmount()
 
         window.history.pushState({}, '', '/sign-in')
@@ -251,6 +251,21 @@ describe('NicheFlow landing page', () => {
             .toBeInTheDocument()
         expect(within(header).queryByRole('button', {name: 'Sign out'}))
             .not.toBeInTheDocument()
+    })
+
+    it('shows breadcrumbs on the listing page', async () => {
+        window.history.pushState({}, '', '/listings/1')
+        render(<App/>)
+
+        const trail = await screen.findByRole('navigation', {name: 'Breadcrumb'})
+        expect(within(trail).getByRole('link', {name: 'Explore'}))
+            .toHaveAttribute('href', '/')
+        expect(within(trail).getByText('Sunny garden studio'))
+            .toHaveAttribute('aria-current', 'page')
+
+        fireEvent.click(within(trail).getByRole('link', {name: 'Explore'}))
+        expect(await screen.findByRole('heading', {name: 'Find your next favorite place.'}))
+            .toBeInTheDocument()
     })
 
     it('filters listings by keyword without case sensitivity', async () => {
