@@ -2,7 +2,8 @@
  * This program creates a PENDING booking for BK-01 and moves it
  * through the BK-02 lifecycle. Create names a listing and a UTC
  * window. PostgreSQL rejects a second overlapping insert. Confirm
- * charges the mocked Stripe layer once, then moves pending to
+ * charges the mocked Stripe layer once for the price per day times
+ * the days booked (BookingPriceCalculator), then moves pending to
  * confirmed. Cancel is allowed for the customer, the listing
  * supplier, or an admin, and stores the BK-04 refund on that save.
  * Complete is allowed for the supplier.
@@ -211,8 +212,8 @@ public class BookingService {
         rejectUnauthorizedTransition(caller, booking,
                 BookingStatus.CONFIRMED);
 
-        // To take payment before the status leaves pending
-        paymentClient.charge(booking.getListing().getPrice(),
+        // To charge for every day booked before the status leaves pending
+        paymentClient.charge(totalPrice(booking),
                 confirmIdempotencyKey(bookingId));
 
         return transition(caller, bookingId, BookingStatus.CONFIRMED);
@@ -241,7 +242,7 @@ public class BookingService {
 
         // To price the refund from the moment of this cancel
         BigDecimal refund = RefundCalculator.calculateRefund(
-                booking.getListing().getPrice(),
+                totalPrice(booking),
                 booking.getStartTime(),
                 Instant.now());
 
@@ -250,6 +251,21 @@ public class BookingService {
         booking.setStatus(BookingStatus.CANCELLED);
 
         return bookingRepository.save(booking);
+    }
+
+    /**
+     * totalPrice - This function returns what the booking costs: the
+     * listing's price per day times the days the booking covers.
+     *
+     * Parameters:
+     * booking - The booking being charged or refunded
+     *
+     * Return - The total, with scale 2
+     */
+    private static BigDecimal totalPrice(Booking booking) {
+        return BookingPriceCalculator.totalPrice(
+                booking.getListing().getPrice(),
+                booking.getStartTime(), booking.getEndTime());
     }
 
     /**

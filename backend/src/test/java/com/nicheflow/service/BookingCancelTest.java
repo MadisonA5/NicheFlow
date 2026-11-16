@@ -47,8 +47,6 @@ import com.nicheflow.security.AuthenticatedUser;
 @ExtendWith(MockitoExtension.class)
 class BookingCancelTest {
 
-    private static final Instant END = Instant.parse(
-            "2026-12-01T16:00:00Z");
     private static final long BOOKING_ID = 11L;
     private static final BigDecimal PRICE = new BigDecimal("25.00");
 
@@ -177,8 +175,9 @@ class BookingCancelTest {
     }
 
     /**
-     * load - This function stubs a booking with the given status,
-     * start, and listing price.
+     * load - This function stubs a one-hour booking with the given
+     * status, start, and listing price. One hour is one day, so the
+     * full refund is the listing price.
      *
      * Parameters:
      * status - The lifecycle state to stamp on the booking
@@ -191,7 +190,7 @@ class BookingCancelTest {
             BigDecimal price) {
         listing.setPrice(price);
         Booking booking = TestBookings.withId(BOOKING_ID, listing,
-                customer, startTime, END);
+                customer, startTime, startTime.plus(1, ChronoUnit.HOURS));
         booking.setStatus(status);
         given(bookingRepository.findById(BOOKING_ID))
                 .willReturn(Optional.of(booking));

@@ -18,7 +18,7 @@ public record PaymentCharge(String idempotencyKey, BigDecimal amount) {
      *
      * Parameters:
      * idempotencyKey - The key that must not be charged twice
-     * amount - The listing price that was charged
+     * amount - The booking total that was charged
      */
     public PaymentCharge {
     }
