@@ -76,9 +76,18 @@ docker run -p 5432:5432 -e POSTGRES_USER=nicheflow -e POSTGRES_PASSWORD=nicheflo
 
 The springboot backend lives in `backend/`. From the repository root run:
 
+On Windows:
+
 ```bash
 cd backend
 .\mvnw.cmd spring-boot:run
+```
+
+On macOS or Linux:
+
+```bash
+cd backend
+./mvnw spring-boot:run
 ```
 
 ## Running the Frontend
