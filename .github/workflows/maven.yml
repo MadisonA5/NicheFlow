@@ -24,6 +24,6 @@ jobs:
         distribution: 'temurin'
         cache: maven
     - name: Clean Just in case of stale cache
-      run: mvn clean
+      run: mvn clean --file backend/pom.xml
     - name: Build with Maven
       run: mvn -B package --file backend/pom.xml
