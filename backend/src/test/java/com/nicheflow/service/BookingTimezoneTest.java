@@ -58,17 +58,24 @@ class BookingTimezoneTest {
 
     /**
      * springForwardWindowKeepsTheCorrectRealDuration - This function
-     * books America/Edmonton local 2026-03-08 01:30 through 03:30.
+     * books America/Edmonton local 2023-03-12 01:30 through 03:30.
      * Clocks skip 02:00 that morning, so subtracting the wall-clock
      * hours gives 2 hours while the real UTC length is 1 hour.
+     *
+     * The date is a past, already-settled transition rather than a
+     * future one. A future year's DST prediction can be revised by a
+     * later IANA tzdata update if a jurisdiction changes its DST law
+     * (this is exactly what broke this test for 2026 in CI once the
+     * JDK picked up newer tzdata), but a past transition is historical
+     * fact and will never change.
      */
     @Test
     void springForwardWindowKeepsTheCorrectRealDuration() {
         // To cross the gap from 02:00 to 03:00
         ZonedDateTime startLocal = ZonedDateTime.of(
-                2026, 3, 8, 1, 30, 0, 0, EDMONTON);
+                2023, 3, 12, 1, 30, 0, 0, EDMONTON);
         ZonedDateTime endLocal = ZonedDateTime.of(
-                2026, 3, 8, 3, 30, 0, 0, EDMONTON);
+                2023, 3, 12, 3, 30, 0, 0, EDMONTON);
 
         assertThat(wallClockDuration(startLocal, endLocal))
                 .isEqualTo(Duration.ofHours(2));
@@ -78,18 +85,21 @@ class BookingTimezoneTest {
 
     /**
      * fallBackWindowKeepsTheCorrectRealDuration - This function
-     * books America/Edmonton local 2026-11-01 00:30 through 02:30.
+     * books America/Edmonton local 2023-11-05 00:30 through 02:30.
      * The 01:00 hour happens twice that morning, so subtracting the
      * wall-clock hours gives 2 hours while the real UTC length is
      * 3 hours. 00:30 is before the overlap and 02:30 is after it.
+     *
+     * The date is a past, already-settled transition for the same
+     * reason as springForwardWindowKeepsTheCorrectRealDuration above.
      */
     @Test
     void fallBackWindowKeepsTheCorrectRealDuration() {
         // To cross the repeated hour from 01:00 to 02:00
         ZonedDateTime startLocal = ZonedDateTime.of(
-                2026, 11, 1, 0, 30, 0, 0, EDMONTON);
+                2023, 11, 5, 0, 30, 0, 0, EDMONTON);
         ZonedDateTime endLocal = ZonedDateTime.of(
-                2026, 11, 1, 2, 30, 0, 0, EDMONTON);
+                2023, 11, 5, 2, 30, 0, 0, EDMONTON);
 
         assertThat(wallClockDuration(startLocal, endLocal))
                 .isEqualTo(Duration.ofHours(2));
