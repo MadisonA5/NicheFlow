@@ -1,5 +1,5 @@
 /**
- * This program is the Assignment 4 black-box test suite for LST-02
+ * This program is the black-box test suite for LST-02
  * listing search (ListingService.search, reached through
  * GET /api/listings). It never inspects internals: each test seeds
  * listings, calls the endpoint, and checks which listings come back.
@@ -7,8 +7,6 @@
  * testing, equivalence class partitioning, and pairwise
  * combinatorial testing. Needs Docker (Testcontainers).
  *
- * File:   ListingSearchBlackBoxTest.java
- * Course: AUCSC 325
  */
 package com.nicheflow;
 
@@ -384,9 +382,7 @@ class ListingSearchBlackBoxTest {
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                        {"title":"%s","category":"%s","price":%s,\
-                        "location":"Edmonton",\
-                        "description":"A day on the river."}
+                        {"title":"%s","category":"%s","price":%s,"location":"Camrose","description":"Test listing"}
                         """.formatted(title, category, price)))
                 .andExpect(status().isCreated())
                 .andReturn();
