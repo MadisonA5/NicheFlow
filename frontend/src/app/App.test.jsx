@@ -727,10 +727,10 @@ describe('NicheFlow landing page', () => {
         await screen.findByRole('heading', {name: 'Request a booking'})
 
         fireEvent.change(screen.getByLabelText('Start time'), {
-            target: {value: '2031-03-01T10:00'},
+            target: {value: '2031-07-15T10:00'},
         })
         fireEvent.change(screen.getByLabelText('End time'), {
-            target: {value: '2031-03-01T12:00'},
+            target: {value: '2031-07-15T12:00'},
         })
 
         expect(screen.getByText('$38 × 2 hours')).toBeInTheDocument()
@@ -749,8 +749,8 @@ describe('NicheFlow landing page', () => {
             }),
             body: JSON.stringify({
                 listingId: listings[0].id,
-                startTime: '2031-03-01T17:00:00.000Z',
-                endTime: '2031-03-01T19:00:00.000Z',
+                startTime: '2031-07-15T16:00:00.000Z',
+                endTime: '2031-07-15T18:00:00.000Z',
             }),
         }))
     })
@@ -764,8 +764,8 @@ describe('NicheFlow landing page', () => {
             ok: true,
             json: async () => url.startsWith('/api/bookings/availability/')
                 ? [{
-                    startTime: '2031-03-01T17:00:00Z',
-                    endTime: '2031-03-01T18:00:00Z',
+                    startTime: '2031-07-15T16:00:00Z',
+                    endTime: '2031-07-15T17:00:00Z',
                 }]
                 : {items: listings.map((listing) => ({...listing, active: true}))},
         }))
@@ -775,10 +775,10 @@ describe('NicheFlow landing page', () => {
         fireEvent.click(await screen.findByRole('link', {name: 'Book by the hour'}))
 
         fireEvent.change(await screen.findByLabelText('Start time'), {
-            target: {value: '2031-03-01T10:00'},
+            target: {value: '2031-07-15T10:00'},
         })
         fireEvent.change(screen.getByLabelText('End time'), {
-            target: {value: '2031-03-01T11:00'},
+            target: {value: '2031-07-15T11:00'},
         })
 
         expect(await screen.findByRole('alert'))
@@ -786,10 +786,10 @@ describe('NicheFlow landing page', () => {
         expect(screen.getByRole('button', {name: 'Request booking'})).toBeDisabled()
 
         fireEvent.change(screen.getByLabelText('Start time'), {
-            target: {value: '2031-03-01T11:00'},
+            target: {value: '2031-07-15T11:00'},
         })
         fireEvent.change(screen.getByLabelText('End time'), {
-            target: {value: '2031-03-01T12:00'},
+            target: {value: '2031-07-15T12:00'},
         })
         expect(screen.getByRole('button', {name: 'Request booking'})).toBeEnabled()
     })
