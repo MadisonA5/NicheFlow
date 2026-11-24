@@ -159,6 +159,7 @@ class BookingBlackBoxTest {
     /**
      * Boundary: a window that starts exactly when the other ends is
      * allowed. Assumes the database range is half-open [start, end);
+     * if this fails, ask the team which behaviour is intended.
      */
     @Test
     void backToBackWindowsAreAllowed() throws Exception {
@@ -359,9 +360,7 @@ class BookingBlackBoxTest {
                 .header(HttpHeaders.AUTHORIZATION, bearer(supplierToken))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                        {"title":"Kayak %s","category":"SPORTS","price":50.00,\
-                        "location":"Edmonton",\
-                        "description":"A day on the river."}
+                        {"title":"Kayak %s","category":"SPORTS","price":50.00,"location":"Camrose","description":"Test listing"}
                         """.formatted(UUID.randomUUID())))
                 .andExpect(status().isCreated())
                 .andReturn();
