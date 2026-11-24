@@ -10,6 +10,8 @@
 package com.nicheflow.service;
 
 import java.math.BigDecimal;
+import java.time.DateTimeException;
+import java.time.ZoneId;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -72,6 +74,14 @@ public class ListingService {
     public Listing create(AuthenticatedUser caller, String title,
             String category, BigDecimal price, String location,
             String description) {
+        return create(caller, title, category, price, location,
+                description, null);
+    }
+
+    @Transactional
+    public Listing create(AuthenticatedUser caller, String title,
+            String category, BigDecimal price, String location,
+            String description, String timeZone) {
         // To reject a customer or admin creating a supplier listing
         requireSupplierRole(caller);
 
@@ -80,7 +90,7 @@ public class ListingService {
 
         // To persist a new active listing owned by that supplier
         Listing listing = new Listing(title, category, price, location,
-                description, supplier);
+                description, validTimeZone(timeZone, "UTC"), supplier);
 
         return listingRepository.save(listing);
     }
@@ -105,6 +115,14 @@ public class ListingService {
     public Listing update(AuthenticatedUser caller, Long listingId,
             String title, String category, BigDecimal price,
             String location, String description) {
+        return update(caller, listingId, title, category, price, location,
+                description, null);
+    }
+
+    @Transactional
+    public Listing update(AuthenticatedUser caller, Long listingId,
+            String title, String category, BigDecimal price,
+            String location, String description, String timeZone) {
         Listing listing = requireOwnedListing(caller, listingId);
 
         // To replace only the editable fields, never owner or active
@@ -113,6 +131,9 @@ public class ListingService {
         listing.setPrice(price);
         listing.setLocation(location);
         listing.setDescription(description);
+        if (timeZone != null && !timeZone.isBlank()) {
+            listing.setTimeZone(validTimeZone(timeZone, listing.getTimeZone()));
+        }
 
         return listingRepository.save(listing);
     }
@@ -329,6 +350,18 @@ public class ListingService {
     private void requireSupplierRole(AuthenticatedUser caller) {
         if (caller.role() != Role.SUPPLIER) {
             throw new ListingAccessDeniedException();
+        }
+    }
+
+    private String validTimeZone(String timeZone, String fallback) {
+        if (timeZone == null || timeZone.isBlank()) {
+            return fallback;
+        }
+        try {
+            return ZoneId.of(timeZone.trim()).getId();
+        } catch (DateTimeException exception) {
+            throw new com.nicheflow.exception.InvalidListingException(
+                    "timeZone must be a valid IANA time zone");
         }
     }
 

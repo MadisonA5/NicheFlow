@@ -14,8 +14,9 @@ function ListingCard({listing}) {
                 </h3>
                 <p className="listing-location">{listing.location}</p>
                 <p className="listing-price">
-                    <strong>${listing.price}</strong> / day
+                    <strong>${listing.price}</strong> / hour
                 </p>
+                <p className="listing-location">{listing.timeZone}</p>
                 <Link className="view-listing-link" to={`/listings/${listing.id}`}>
                     View details
                 </Link>

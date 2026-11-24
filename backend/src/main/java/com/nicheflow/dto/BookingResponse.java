@@ -17,7 +17,7 @@ import com.nicheflow.model.Booking;
 
 public record BookingResponse(Long id, Long listingId, Long customerId,
         String status, Instant startTime, Instant endTime,
-        BigDecimal refundAmount) {
+        BigDecimal refundAmount, String timeZone) {
 
     /**
      * from - This function copies the public booking fields. Status
@@ -35,6 +35,7 @@ public record BookingResponse(Long id, Long listingId, Long customerId,
                 booking.getStatus().name(),
                 booking.getStartTime(),
                 booking.getEndTime(),
-                booking.getRefundAmount());
+                booking.getRefundAmount(),
+                booking.getTimeZone());
     }
 }

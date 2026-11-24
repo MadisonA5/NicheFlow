@@ -14,7 +14,7 @@ import java.math.BigDecimal;
 import com.nicheflow.model.Listing;
 
 public record ListingResponse(Long id, String title, String category,
-        BigDecimal price, String location, String description,
+        BigDecimal price, String location, String description, String timeZone,
         Long supplierId, boolean active) {
 
     /**
@@ -30,6 +30,7 @@ public record ListingResponse(Long id, String title, String category,
         return new ListingResponse(listing.getId(), listing.getTitle(),
                 listing.getCategory(), listing.getPrice(),
                 listing.getLocation(), listing.getDescription(),
+                listing.getTimeZone(),
                 listing.getSupplier().getId(), listing.isActive());
     }
 }

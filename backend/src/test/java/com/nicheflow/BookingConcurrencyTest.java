@@ -130,8 +130,8 @@ class BookingConcurrencyTest {
         mockMvc.perform(post("/api/bookings")
                 .header(HttpHeaders.AUTHORIZATION, bearer(secondToken))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(bookingBody(listingId, "2026-11-01T15:30:00Z",
-                        "2026-11-01T16:30:00Z")))
+                .content(bookingBody(listingId, WINDOW_START,
+                        WINDOW_END)))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.title").value("Booking conflict"));
 

@@ -7,15 +7,9 @@ import {
     getAccount,
     updateListing,
 } from './accountDataSource'
+import {formatDateTimeInZone} from '../listings/timeZone'
 
 const categories = ['Workspace', 'Outdoor', 'Events', 'Services', 'Other']
-
-function formatDateTime(value) {
-    return new Intl.DateTimeFormat(undefined, {
-        dateStyle: 'medium',
-        timeStyle: 'short',
-    }).format(new Date(value))
-}
 
 function AccountPage() {
     const session = getSession()
@@ -60,6 +54,7 @@ function AccountPage() {
             price: String(listing.price),
             location: listing.location,
             description: listing.description,
+            timeZone: listing.timeZone || 'UTC',
         })
         setConfirmDeactivateId(null)
         setActionError('')
@@ -202,10 +197,17 @@ function AccountPage() {
                                                         </select>
                                                     </label>
                                                     <label className="auth-field">
-                                                        <span>Price per day ($)</span>
+                                                        <span>Price per hour ($)</span>
                                                         <input name="price" type="number" min="0"
                                                             max="99999999.99" step="0.01"
                                                             value={editForm.price} required
+                                                            onChange={handleEditChange}/>
+                                                    </label>
+                                                    <label className="auth-field">
+                                                        <span>Listing time zone</span>
+                                                        <input name="timeZone"
+                                                            value={editForm.timeZone}
+                                                            maxLength={64} required
                                                             onChange={handleEditChange}/>
                                                     </label>
                                                     <label className="auth-field">
@@ -246,7 +248,7 @@ function AccountPage() {
                                                             {listing.category}
                                                         </p>
                                                         <h3>{listing.title}</h3>
-                                                        <p>{listing.location} · ${listing.price} / day</p>
+                                                        <p>{listing.location} · ${listing.price} / hour</p>
                                                     </div>
                                                     <div className="account-listing-controls">
                                                         <span className={listing.active
@@ -327,10 +329,16 @@ function AccountPage() {
                                                     ` · Customer #${booking.customerId}`}
                                             </p>
                                             <h3>{booking.listingTitle}</h3>
-                                            <p>{booking.location} · ${booking.price} / day</p>
+                                            <p>{booking.location} · ${booking.price} / hour</p>
                                             <p>
-                                                {formatDateTime(booking.startTime)} –{' '}
-                                                {formatDateTime(booking.endTime)}
+                                                {formatDateTimeInZone(
+                                                    booking.startTime,
+                                                    booking.timeZone || 'UTC',
+                                                )} –{' '}
+                                                {formatDateTimeInZone(
+                                                    booking.endTime,
+                                                    booking.timeZone || 'UTC',
+                                                )} ({booking.timeZone || 'UTC'})
                                             </p>
                                         </div>
                                         <div className="account-listing-actions">

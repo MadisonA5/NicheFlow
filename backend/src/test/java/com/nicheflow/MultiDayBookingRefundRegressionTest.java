@@ -48,16 +48,15 @@ class MultiDayBookingRefundRegressionTest {
     private MockStripePaymentClient paymentClient;
 
     /**
-     * fiveDayBookingIsChargedAndRefundedForFiveDays - This function
-     * books a 50.00-per-day listing for five days, 40 days ahead,
-     * confirms and expects a 250.00 charge, then cancels and expects
-     * 250.00 back.
+     * fiveDayBookingUsesHourlyPricing - This function books five days
+     * at 2.00 per hour, confirms a 240.00 charge, then cancels and
+     * expects the full refund.
      */
     @Test
-    void fiveDayBookingIsChargedAndRefundedForFiveDays() throws Exception {
+    void fiveDayBookingUsesHourlyPricing() throws Exception {
         String supplier = login("SUPPLIER");
         String customer = login("CUSTOMER");
-        long listingId = createListing(supplier, "50.00");
+        long listingId = createListing(supplier, "2.00");
 
         Instant start = Instant.now().plus(40, ChronoUnit.DAYS)
                 .truncatedTo(ChronoUnit.DAYS);
@@ -69,13 +68,13 @@ class MultiDayBookingRefundRegressionTest {
                 .andExpect(status().isOk());
 
         assertThat(paymentClient.chargeFor("booking-" + bookingId
-                + "-confirm").amount()).isEqualByComparingTo("250.00");
+                + "-confirm").amount()).isEqualByComparingTo("240.00");
 
         mockMvc.perform(put("/api/bookings/" + bookingId + "/cancel")
                 .header(HttpHeaders.AUTHORIZATION, bearer(customer)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("CANCELLED"))
-                .andExpect(jsonPath("$.refundAmount").value(250.00));
+                .andExpect(jsonPath("$.refundAmount").value(240.00));
     }
 
     private String login(String role) throws Exception {

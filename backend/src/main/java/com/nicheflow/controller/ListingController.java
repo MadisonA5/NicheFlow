@@ -73,9 +73,14 @@ public class ListingController {
             @AuthenticationPrincipal AuthenticatedUser caller,
             @Valid @RequestBody ListingRequest request) {
         // To persist the listing owned by this JWT subject
-        Listing listing = listingService.create(caller, request.title(),
-                request.category(), request.price(), request.location(),
-                request.description());
+        Listing listing = request.timeZone() == null
+                ? listingService.create(caller, request.title(),
+                        request.category(), request.price(),
+                        request.location(), request.description())
+                : listingService.create(caller, request.title(),
+                        request.category(), request.price(),
+                        request.location(), request.description(),
+                        request.timeZone());
 
         return ListingResponse.from(listing);
     }
@@ -152,9 +157,14 @@ public class ListingController {
             @PathVariable @Min(1) Long listingId,
             @Valid @RequestBody ListingRequest request) {
         // To overwrite fields only after the service checks ownership
-        Listing listing = listingService.update(caller, listingId,
-                request.title(), request.category(), request.price(),
-                request.location(), request.description());
+        Listing listing = request.timeZone() == null
+                ? listingService.update(caller, listingId, request.title(),
+                        request.category(), request.price(),
+                        request.location(), request.description())
+                : listingService.update(caller, listingId, request.title(),
+                        request.category(), request.price(),
+                        request.location(), request.description(),
+                        request.timeZone());
 
         return ListingResponse.from(listing);
     }

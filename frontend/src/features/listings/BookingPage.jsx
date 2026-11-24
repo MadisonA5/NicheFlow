@@ -2,77 +2,37 @@ import {useEffect, useState} from 'react'
 import {Link, useParams} from 'react-router-dom'
 import {getSession} from '../auth/authDataSource'
 import {createBooking, getUnavailablePeriods} from './bookingsDataSource'
+import {
+    formatDateTimeInZone,
+    getNextLocalHour,
+    localDateTimeToInstant,
+} from './timeZone'
 import useListing from './useListing'
 
-function getToday() {
-    const today = new Date()
-    const offset = today.getTimezoneOffset()
-    return new Date(today.getTime() - offset * 60 * 1000)
-        .toISOString()
-        .slice(0, 10)
-}
-
-function getRentalDays(checkIn, checkOut) {
-    if (!checkIn || !checkOut) return 0
-    const start = Date.parse(`${checkIn}T00:00:00Z`)
-    const end = Date.parse(`${checkOut}T00:00:00Z`)
-    return Math.max(0, Math.round((end - start) / 86_400_000))
-}
-
-function dateKey(date) {
-    const year = date.getFullYear()
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const day = String(date.getDate()).padStart(2, '0')
-    return `${year}-${month}-${day}`
-}
-
-function addOneDay(value) {
-    return new Date(Date.parse(`${value}T00:00:00Z`) + 86_400_000)
-        .toISOString()
-        .slice(0, 10)
-}
-
 function overlapsUnavailablePeriod(start, end, periods) {
-    if (!start || !end || start >= end) return false
-    return periods.some((period) => {
-        const bookedStart = period.startTime.slice(0, 10)
-        const bookedEnd = period.endTime.slice(0, 10)
-        return start < bookedEnd && bookedStart < end
-    })
+    if (!start || !end || end <= start) return false
+    return periods.some((period) =>
+        start < Date.parse(period.endTime) &&
+        Date.parse(period.startTime) < end)
 }
 
-function isUnavailableDate(value, periods) {
-    return overlapsUnavailablePeriod(value, addOneDay(value), periods)
-}
-
-function formatDate(value) {
-    if (!value) return 'Choose a date'
-    return new Intl.DateTimeFormat(undefined, {
-        dateStyle: 'medium',
-        timeZone: 'UTC',
-    }).format(new Date(`${value}T00:00:00Z`))
-}
+const bookingHours = Array.from({length: 24}, (_, hour) =>
+    `${String(hour).padStart(2, '0')}:00`)
 
 function BookingPage() {
     const {listingId} = useParams()
     const {listing, isLoading, loadError} = useListing(listingId)
-    const [checkIn, setCheckIn] = useState('')
-    const [checkOut, setCheckOut] = useState('')
+    const [startDate, setStartDate] = useState('')
+    const [startHour, setStartHour] = useState('')
+    const [endDate, setEndDate] = useState('')
+    const [endHour, setEndHour] = useState('')
     const [availabilityResult, setAvailabilityResult] = useState(null)
-    const [calendarMonth, setCalendarMonth] = useState(() => {
-        const today = new Date()
-        return new Date(today.getFullYear(), today.getMonth(), 1)
-    })
     const [message, setMessage] = useState('')
     const [booking, setBooking] = useState(null)
     const [isSubmitting, setIsSubmitting] = useState(false)
     const session = getSession()
-    const rentalDays = getRentalDays(checkIn, checkOut)
-    const todayKey = getToday()
-    const listingIdForAvailability = listing?.id
     const availabilityMatchesListing = Boolean(
-        listingIdForAvailability &&
-        availabilityResult?.listingId === listingIdForAvailability,
+        listing?.id && availabilityResult?.listingId === listing.id,
     )
     const unavailablePeriods = availabilityMatchesListing
         ? availabilityResult.periods
@@ -81,16 +41,46 @@ function BookingPage() {
     const availabilityError = availabilityMatchesListing
         ? availabilityResult.error
         : ''
+    let selectedStart = null
+    let selectedEnd = null
+    let selectionError = ''
+    const startTime = startDate && startHour
+        ? `${startDate}T${startHour}`
+        : ''
+    const endTime = endDate && endHour ? `${endDate}T${endHour}` : ''
+
+    if (listing && startTime && endTime) {
+        try {
+            selectedStart = localDateTimeToInstant(startTime, listing.timeZone)
+            selectedEnd = localDateTimeToInstant(
+                endTime, listing.timeZone, selectedStart.toISOString(),
+            )
+        } catch (error) {
+            selectionError = error.message
+        }
+    }
+
+    const startInstant = selectedStart?.getTime()
+    const endInstant = selectedEnd?.getTime()
+    const selectedRangeUnavailable = overlapsUnavailablePeriod(
+        startInstant, endInstant, unavailablePeriods,
+    )
+    const bookedHours = startInstant !== undefined && endInstant !== undefined
+        ? (endInstant - startInstant) / 3_600_000
+        : 0
+    const estimatedTotal = bookedHours > 0
+        ? (Number(listing.price) * bookedHours).toFixed(2)
+        : ''
 
     useEffect(() => {
-        if (!listingIdForAvailability) return undefined
+        if (!listing?.id) return undefined
         let isCurrent = true
 
-        getUnavailablePeriods(listingIdForAvailability)
+        getUnavailablePeriods(listing.id)
             .then((periods) => {
                 if (isCurrent) {
                     setAvailabilityResult({
-                        listingId: listingIdForAvailability,
+                        listingId: listing.id,
                         periods,
                         error: '',
                     })
@@ -99,7 +89,7 @@ function BookingPage() {
             .catch((error) => {
                 if (isCurrent) {
                     setAvailabilityResult({
-                        listingId: listingIdForAvailability,
+                        listingId: listing.id,
                         periods: [],
                         error: error.message,
                     })
@@ -109,41 +99,7 @@ function BookingPage() {
         return () => {
             isCurrent = false
         }
-    }, [listingIdForAvailability])
-
-    const monthStart = new Date(
-        calendarMonth.getFullYear(),
-        calendarMonth.getMonth(),
-        1,
-    )
-    const monthLength = new Date(
-        calendarMonth.getFullYear(),
-        calendarMonth.getMonth() + 1,
-        0,
-    ).getDate()
-    const calendarDays = [
-        ...Array((monthStart.getDay() + 6) % 7).fill(null),
-        ...Array.from({length: monthLength}, (_, index) =>
-            new Date(calendarMonth.getFullYear(),
-                calendarMonth.getMonth(), index + 1)),
-    ]
-    const monthLabel = new Intl.DateTimeFormat(undefined, {
-        month: 'long',
-        year: 'numeric',
-    }).format(calendarMonth)
-    const selectedRangeUnavailable = overlapsUnavailablePeriod(
-        checkIn, checkOut, unavailablePeriods,
-    )
-
-    function chooseDate(value) {
-        setMessage('')
-        if (!checkIn || checkOut || value <= checkIn) {
-            setCheckIn(value)
-            setCheckOut('')
-        } else {
-            setCheckOut(value)
-        }
-    }
+    }, [listing?.id])
 
     if (isLoading) {
         return <p className="listing-page-message" role="status">Loading booking details…</p>
@@ -166,8 +122,8 @@ function BookingPage() {
         try {
             const createdBooking = await createBooking({
                 listingId: listing.id,
-                checkIn,
-                checkOut,
+                startTime: selectedStart.toISOString(),
+                endTime: selectedEnd.toISOString(),
             })
             setBooking(createdBooking)
             setMessage(`Booking request submitted. Its current status is ${createdBooking.status.toLowerCase()}.`)
@@ -188,7 +144,7 @@ function BookingPage() {
                     <p className="eyebrow">Plan your visit</p>
                     <h1 id="booking-heading">Request a booking</h1>
                     <p className="auth-description">
-                        Choose available dates to see an estimated total.
+                        Select a start and end time. Times are shown in {listing.timeZone}.
                     </p>
                     {!session ? (
                         <p className="preview-note">
@@ -206,124 +162,106 @@ function BookingPage() {
                     )}
 
                     <form className="booking-form" onSubmit={handleSubmit}>
-                        <div className="booking-calendar" role="group"
-                            aria-label="Choose booking dates">
-                            <div className="booking-calendar-heading">
-                                <button
-                                    className="account-action-button"
-                                    type="button"
-                                    aria-label="Previous month"
-                                    disabled={calendarMonth.getFullYear() ===
-                                        new Date(`${todayKey}T00:00:00`).getFullYear() &&
-                                        calendarMonth.getMonth() <=
-                                        new Date(`${todayKey}T00:00:00`).getMonth()}
-                                    onClick={() => setCalendarMonth((month) =>
-                                        new Date(month.getFullYear(),
-                                            month.getMonth() - 1, 1))}
-                                >
-                                    ←
-                                </button>
-                                <h2>{monthLabel}</h2>
-                                <button
-                                    className="account-action-button"
-                                    type="button"
-                                    aria-label="Next month"
-                                    onClick={() => setCalendarMonth((month) =>
-                                        new Date(month.getFullYear(),
-                                            month.getMonth() + 1, 1))}
-                                >
-                                    →
-                                </button>
-                            </div>
-                            {availabilityLoading ? (
-                                <p role="status">Checking availability…</p>
-                            ) : availabilityError ? (
-                                <p className="booking-validation" role="alert">
-                                    Could not load availability: {availabilityError}
-                                </p>
-                            ) : (
-                                <>
-                                    <div className="booking-calendar-grid booking-calendar-weekdays"
-                                        aria-hidden="true">
-                                        {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-                                            .map((day) => <span key={day}>{day}</span>)}
-                                    </div>
-                                    <div className="booking-calendar-grid">
-                                        {calendarDays.map((day, index) => {
-                                            if (!day) {
-                                                return <span key={`blank-${index}`}
-                                                    aria-hidden="true"/>
-                                            }
-                                            const value = dateKey(day)
-                                            const unavailable =
-                                                isUnavailableDate(value, unavailablePeriods)
-                                            const choosingCheckout =
-                                                Boolean(checkIn && !checkOut && value > checkIn)
-                                            const overlap = choosingCheckout &&
-                                                overlapsUnavailablePeriod(
-                                                    checkIn, value, unavailablePeriods,
-                                                )
-                                            const selected = value === checkIn ||
-                                                value === checkOut
-                                            const inRange = checkIn && checkOut &&
-                                                value >= checkIn && value < checkOut
-                                            const canUseAsCheckoutBoundary =
-                                                choosingCheckout && !overlap
-                                            const disabled = value < todayKey ||
-                                                Boolean(booking) ||
-                                                (!choosingCheckout && unavailable) ||
-                                                (choosingCheckout && overlap)
-                                            const classes = [
-                                                'booking-calendar-day',
-                                                unavailable && 'unavailable',
-                                                selected && 'selected',
-                                                inRange && 'in-range',
-                                            ].filter(Boolean).join(' ')
-                                            return (
-                                                <button
-                                                    className={classes}
-                                                    type="button"
-                                                    key={value}
-                                                    aria-label={`${value}${unavailable
-                                                        ? canUseAsCheckoutBoundary
-                                                            ? ', unavailable for stay but available as checkout'
-                                                            : ', unavailable'
-                                                        : ''}`}
-                                                    aria-pressed={Boolean(selected)}
-                                                    disabled={disabled}
-                                                    onClick={() => chooseDate(value)}
-                                                >
-                                                    {day.getDate()}
-                                                </button>
-                                            )
-                                        })}
-                                    </div>
-                                    <div className="booking-calendar-selection">
-                                        <p>Check-in <strong>{formatDate(checkIn)}</strong></p>
-                                        <p>Check-out <strong>{formatDate(checkOut)}</strong></p>
-                                    </div>
-                                    <p className="booking-calendar-legend">
-                                        <span aria-hidden="true"/> Unavailable dates are shaded.
-                                    </p>
-                                </>
-                            )}
-                        </div>
-                        {checkIn && checkOut && rentalDays === 0 && (
+                        {availabilityLoading ? (
+                            <p role="status">Checking availability…</p>
+                        ) : availabilityError ? (
                             <p className="booking-validation" role="alert">
-                                Check-out must be after check-in.
+                                Could not load availability: {availabilityError}
+                            </p>
+                        ) : (
+                            <>
+                                <label className="auth-field">
+                                    <span>Start date</span>
+                                    <input
+                                        aria-label="Start date"
+                                        type="date"
+                                        min={getNextLocalHour(listing.timeZone).slice(0, 10)}
+                                        value={startDate}
+                                        onChange={(event) => {
+                                            setStartDate(event.target.value)
+                                            setMessage('')
+                                        }}
+                                        required
+                                    />
+                                </label>
+                                <label className="auth-field">
+                                    <span>Start hour ({listing.timeZone})</span>
+                                    <select
+                                        aria-label="Start hour"
+                                        value={startHour}
+                                        onChange={(event) => {
+                                            setStartHour(event.target.value)
+                                            setMessage('')
+                                        }}
+                                        required
+                                    >
+                                        <option value="">Choose an hour</option>
+                                        {bookingHours.map((hour) => (
+                                            <option key={hour} value={hour}
+                                                disabled={startDate === getNextLocalHour(listing.timeZone).slice(0, 10) &&
+                                                    hour < getNextLocalHour(listing.timeZone).slice(11)}
+                                            >
+                                                {hour}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </label>
+                                <label className="auth-field">
+                                    <span>End date</span>
+                                    <input
+                                        aria-label="End date"
+                                        type="date"
+                                        min={startDate || getNextLocalHour(listing.timeZone).slice(0, 10)}
+                                        value={endDate}
+                                        onChange={(event) => {
+                                            setEndDate(event.target.value)
+                                            setMessage('')
+                                        }}
+                                        required
+                                    />
+                                </label>
+                                <label className="auth-field">
+                                    <span>End hour ({listing.timeZone})</span>
+                                    <select
+                                        aria-label="End hour"
+                                        value={endHour}
+                                        onChange={(event) => {
+                                            setEndHour(event.target.value)
+                                            setMessage('')
+                                        }}
+                                        required
+                                    >
+                                        <option value="">Choose an hour</option>
+                                        {bookingHours.map((hour) => (
+                                            <option key={hour} value={hour}
+                                                disabled={endDate === startDate && Boolean(startHour) &&
+                                                    hour < startHour}
+                                            >
+                                                {hour}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </label>
+                            </>
+                        )}
+                        {selectionError && (
+                            <p className="booking-validation" role="alert">
+                                {selectionError}
                             </p>
                         )}
                         {selectedRangeUnavailable && (
                             <p className="booking-validation" role="alert">
-                                Your selected dates include unavailable time.
+                                Your selected time overlaps an unavailable booking.
                             </p>
                         )}
                         <button
                             className="auth-submit-button"
                             type="submit"
                             disabled={availabilityLoading || Boolean(availabilityError) ||
-                                selectedRangeUnavailable || rentalDays === 0 || !session ||
-                                session.user.role !== 'CUSTOMER' || isSubmitting || Boolean(booking)}
+                                !selectedStart || !selectedEnd || Boolean(selectionError) ||
+                                selectedRangeUnavailable || !session ||
+                                session.user.role !== 'CUSTOMER' || isSubmitting ||
+                                Boolean(booking)}
                         >
                             {isSubmitting ? 'Submitting…' : booking ? 'Request submitted' : 'Request booking'}
                         </button>
@@ -344,13 +282,20 @@ function BookingPage() {
                     <p className="listing-category">{listing.category}</p>
                     <h2>{listing.title}</h2>
                     <p className="listing-location">{listing.location}</p>
+                    <p className="listing-location">Time zone: {listing.timeZone}</p>
                     <div className="booking-price-line">
-                        <span>${listing.price} × {rentalDays || '—'} {rentalDays === 1 ? 'day' : 'days'}</span>
-                        <strong>{rentalDays ? `$${listing.price * rentalDays}` : '—'}</strong>
+                        <span>${listing.price} × {bookedHours || '—'} {bookedHours === 1 ? 'hour' : 'hours'}</span>
+                        <strong>{estimatedTotal ? `$${estimatedTotal}` : '—'}</strong>
                     </div>
+                    {selectedStart && selectedEnd && !selectionError && (
+                        <p className="booking-estimate-note">
+                            {formatDateTimeInZone(selectedStart, listing.timeZone)} –{' '}
+                            {formatDateTimeInZone(selectedEnd, listing.timeZone)}
+                        </p>
+                    )}
                     <p className="booking-total">
                         <span>Estimated total</span>
-                        <strong>{rentalDays ? `$${listing.price * rentalDays}` : 'Choose dates'}</strong>
+                        <strong>{estimatedTotal ? `$${estimatedTotal}` : 'Choose times'}</strong>
                     </p>
                     <p className="booking-estimate-note">
                         Estimate only. Taxes, availability, and final pricing aren’t included.

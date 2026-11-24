@@ -29,16 +29,19 @@ function ListingDetailPage() {
                     <p className="listing-category">{listing.category}</p>
                     <h1>{listing.title}</h1>
                     <p className="listing-detail-location">{listing.location}</p>
+                    <p className="listing-detail-location">
+                        Booking time zone: {listing.timeZone}
+                    </p>
                     <p className="listing-description">{listing.description}</p>
                     <div className="listing-detail-bottom">
                         <p className="listing-price">
-                            <strong>${listing.price}</strong> / day
+                            <strong>${listing.price}</strong> / hour
                         </p>
                         <Link
                             className="booking-link"
                             to={`/listings/${listing.id}/book`}
                         >
-                            Check dates
+                            Book by the hour
                         </Link>
                     </div>
                 </div>

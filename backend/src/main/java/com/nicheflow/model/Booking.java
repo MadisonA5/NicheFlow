@@ -52,6 +52,9 @@ public class Booking {
     @Column(name = "end_time", nullable = false)
     private Instant endTime;
 
+    @Column(name = "time_zone", nullable = false, length = 64)
+    private String timeZone;
+
     @Column(name = "refund_amount", precision = 10, scale = 2)
     private BigDecimal refundAmount;
 
@@ -77,11 +80,17 @@ public class Booking {
      */
     public Booking(Listing listing, User customer, Instant startTime,
             Instant endTime) {
+        this(listing, customer, startTime, endTime, listing.getTimeZone());
+    }
+
+    public Booking(Listing listing, User customer, Instant startTime,
+            Instant endTime, String timeZone) {
         // To store the listing, customer, and UTC slot
         this.listing = listing;
         this.customer = customer;
         this.startTime = startTime;
         this.endTime = endTime;
+        this.timeZone = timeZone;
 
         // To start the BK-02 lifecycle at pending
         this.status = BookingStatus.PENDING;
@@ -203,6 +212,10 @@ public class Booking {
     public void setEndTime(Instant endTime) {
         // To store a new UTC end on this booking
         this.endTime = endTime;
+    }
+
+    public String getTimeZone() {
+        return timeZone;
     }
 
     /**

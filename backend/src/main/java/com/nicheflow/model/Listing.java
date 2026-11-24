@@ -46,6 +46,9 @@ public class Listing {
     @Column(nullable = false, length = 2000)
     private String description;
 
+    @Column(name = "time_zone", nullable = false, length = 64)
+    private String timeZone = "UTC";
+
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
     @JoinColumn(name = "supplier_id", nullable = false)
     private User supplier;
@@ -77,12 +80,19 @@ public class Listing {
      */
     public Listing(String title, String category, BigDecimal price,
             String location, String description, User supplier) {
+        this(title, category, price, location, description, "UTC", supplier);
+    }
+
+    public Listing(String title, String category, BigDecimal price,
+            String location, String description, String timeZone,
+            User supplier) {
         // To store the fields the create-listing path passes in
         this.title = title;
         this.category = category;
         this.price = price;
         this.location = location;
         this.description = description;
+        this.timeZone = timeZone;
         this.supplier = supplier;
         this.active = true;
     }
@@ -194,6 +204,14 @@ public class Listing {
      */
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public String getTimeZone() {
+        return timeZone;
+    }
+
+    public void setTimeZone(String timeZone) {
+        this.timeZone = timeZone;
     }
 
     /**

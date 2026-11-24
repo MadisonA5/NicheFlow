@@ -185,7 +185,7 @@ function HomePage() {
                             </select>
                         </label>
                         <label>
-                            <span>Maximum price per day</span>
+                            <span>Maximum price per hour</span>
                             <input
                                 name="maxPrice"
                                 type="number"

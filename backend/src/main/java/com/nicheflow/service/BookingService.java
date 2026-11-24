@@ -2,8 +2,8 @@
  * This program creates a PENDING booking for BK-01 and moves it
  * through the BK-02 lifecycle. Create names a listing and a UTC
  * window. PostgreSQL rejects a second overlapping insert. Confirm
- * charges the mocked Stripe layer once for the price per day times
- * the days booked (BookingPriceCalculator), then moves pending to
+ * charges the mocked payment layer once for the price per hour times
+ * the hours booked (BookingPriceCalculator), then moves pending to
  * confirmed. Cancel is allowed for the customer, the listing
  * supplier, or an admin, and stores the BK-04 refund on that save.
  * Complete is allowed for the supplier.
@@ -23,6 +23,7 @@ package com.nicheflow.service;
 import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.util.List;
 
 import org.springframework.dao.DataIntegrityViolationException;
@@ -121,6 +122,9 @@ public class BookingService {
         // To book only a listing that is still offered
         Listing listing = loadBookableListing(listingId);
 
+        rejectNonHourlyWindow(startTime, endTime,
+                ZoneId.of(listing.getTimeZone()));
+
         return insertPendingBooking(listing, customer, startTime,
                 endTime);
     }
@@ -212,7 +216,7 @@ public class BookingService {
         rejectUnauthorizedTransition(caller, booking,
                 BookingStatus.CONFIRMED);
 
-        // To charge for every day booked before the status leaves pending
+        // To charge for every hour booked before the status leaves pending
         paymentClient.charge(totalPrice(booking),
                 confirmIdempotencyKey(bookingId));
 
@@ -255,7 +259,7 @@ public class BookingService {
 
     /**
      * totalPrice - This function returns what the booking costs: the
-     * listing's price per day times the days the booking covers.
+     * listing's price per hour times the hours the booking covers.
      *
      * Parameters:
      * booking - The booking being charged or refunded
@@ -266,6 +270,24 @@ public class BookingService {
         return BookingPriceCalculator.totalPrice(
                 booking.getListing().getPrice(),
                 booking.getStartTime(), booking.getEndTime());
+    }
+
+    private void rejectNonHourlyWindow(Instant startTime, Instant endTime,
+            ZoneId timeZone) {
+        long durationSeconds = java.time.Duration.between(startTime,
+                endTime).getSeconds();
+        if (durationSeconds < 3600 || durationSeconds % 3600 != 0
+                || !isOnHour(startTime, timeZone)
+                || !isOnHour(endTime, timeZone)) {
+            throw new InvalidBookingException(
+                    "Booking times must be whole-hour slots in the listing's time zone");
+        }
+    }
+
+    private boolean isOnHour(Instant instant, ZoneId timeZone) {
+        var localTime = instant.atZone(timeZone).toLocalTime();
+        return localTime.getMinute() == 0 && localTime.getSecond() == 0
+                && localTime.getNano() == 0;
     }
 
     /**
@@ -469,7 +491,7 @@ public class BookingService {
     private Booking insertPendingBooking(Listing listing, User customer,
             Instant startTime, Instant endTime) {
         Booking booking = new Booking(listing, customer, startTime,
-                endTime);
+                endTime, listing.getTimeZone());
 
         try {
             // To force the INSERT now, while this transaction is open

@@ -9,7 +9,13 @@ const initialForm = {
     price: '',
     location: '',
     description: '',
+    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
 }
+const timeZones = [...new Set([
+    'UTC',
+    ...Intl.supportedValuesOf('timeZone'),
+    initialForm.timeZone,
+])].sort((first, second) => first.localeCompare(second))
 
 function CreateListingPage() {
     const session = getSession()
@@ -110,7 +116,7 @@ function CreateListingPage() {
                                 </select>
                             </label>
                             <label className="auth-field">
-                                <span>Price per day ($)</span>
+                                <span>Price per hour ($)</span>
                                 <input
                                     name="price"
                                     type="number"
@@ -121,6 +127,22 @@ function CreateListingPage() {
                                     onChange={handleChange}
                                     required
                                 />
+                            </label>
+                            <label className="auth-field">
+                                <span>Listing time zone</span>
+                                <select
+                                    name="timeZone"
+                                    value={form.timeZone}
+                                    onChange={handleChange}
+                                    required
+                                >
+                                    {timeZones.map((timeZone) => (
+                                        <option key={timeZone} value={timeZone}>
+                                            {timeZone}
+                                        </option>
+                                    ))}
+                                </select>
+                                <small>Times will be shown in this time zone.</small>
                             </label>
                             <label className="auth-field">
                                 <span>Location</span>
