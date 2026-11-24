@@ -105,6 +105,13 @@ public class GlobalExceptionHandler {
                 exception.getMessage());
     }
 
+    @ExceptionHandler(InvalidListingException.class)
+    public ProblemDetail handleInvalidListing(
+            InvalidListingException exception) {
+        return problem(HttpStatus.BAD_REQUEST, "Invalid listing",
+                exception.getMessage());
+    }
+
     /**
      * handleBookingConflict - This function maps a lost BK-01 overlap
      * to HTTP 409 so the client can choose another window.

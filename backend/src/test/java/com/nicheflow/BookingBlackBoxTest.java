@@ -59,7 +59,19 @@ class BookingBlackBoxTest {
         book(customer, listingId, T10, T11)
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.status").value("PENDING"))
+                .andExpect(jsonPath("$.timeZone").value("UTC"))
                 .andExpect(jsonPath("$.id").isNumber());
+    }
+
+    @Test
+    void bookingResponseKeepsTheListingsTimeZone() throws Exception {
+        long listingId = createListing(login("SUPPLIER"),
+                "America/Edmonton");
+
+        book(login("CUSTOMER"), listingId, "2031-03-01T17:00:00Z",
+                "2031-03-01T18:00:00Z")
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.timeZone").value("America/Edmonton"));
     }
 
     /** Only customers may book: a supplier is refused. */
@@ -112,13 +124,13 @@ class BookingBlackBoxTest {
                 .andExpect(status().isBadRequest());
     }
 
-    /** Boundary: the smallest legal window, one second long, works. */
+    /** Sub-hour windows are rejected. */
     @Test
-    void oneSecondWindowIsAccepted() throws Exception {
+    void oneSecondWindowIsRejected() throws Exception {
         long listingId = createListing(login("SUPPLIER"));
         book(login("CUSTOMER"), listingId, "2031-03-01T10:00:00Z",
                 "2031-03-01T10:00:01Z")
-                .andExpect(status().isCreated());
+                .andExpect(status().isBadRequest());
     }
 
     /** Boundary: listingId 0 breaks the minimum of 1 (400). */
@@ -145,14 +157,14 @@ class BookingBlackBoxTest {
     // CREATE: overlapping windows on one listing
     // =================================================================
 
-    /** Boundary: overlapping by one second is a conflict (409). */
+    /** Boundary: overlapping whole-hour windows conflict (409). */
     @Test
-    void windowOverlappingByOneSecondIsAConflict() throws Exception {
+    void windowOverlappingByOneHourIsAConflict() throws Exception {
         long listingId = createListing(login("SUPPLIER"));
-        book(login("CUSTOMER"), listingId, T10, T11)
+        book(login("CUSTOMER"), listingId, T10, T12)
                 .andExpect(status().isCreated());
 
-        book(login("CUSTOMER"), listingId, "2031-03-01T10:59:59Z", T12)
+        book(login("CUSTOMER"), listingId, T11, "2031-03-01T13:00:00Z")
                 .andExpect(status().isConflict());
     }
 
@@ -355,14 +367,20 @@ class BookingBlackBoxTest {
 
     /** The supplier creates an active listing and we return its id. */
     private long createListing(String supplierToken) throws Exception {
+        return createListing(supplierToken, "UTC");
+    }
+
+    private long createListing(String supplierToken, String timeZone)
+            throws Exception {
         MvcResult result = mockMvc.perform(post("/api/listings")
                 .header(HttpHeaders.AUTHORIZATION, bearer(supplierToken))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                         {"title":"Kayak %s","category":"SPORTS","price":50.00,\
                         "location":"Edmonton",\
-                        "description":"A day on the river."}
-                        """.formatted(UUID.randomUUID())))
+                        "description":"A day on the river.",\
+                        "timeZone":"%s"}
+                        """.formatted(UUID.randomUUID(), timeZone)))
                 .andExpect(status().isCreated())
                 .andReturn();
         Number id = JsonPath.read(

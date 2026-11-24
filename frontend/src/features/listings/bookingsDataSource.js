@@ -1,9 +1,5 @@
 import {getSession} from '../auth/authDataSource'
 
-function toUtcMidnight(date) {
-    return `${date}T00:00:00Z`
-}
-
 export async function getUnavailablePeriods(listingId) {
     const response = await fetch(
         `/api/bookings/availability/${Number(listingId)}`,
@@ -25,7 +21,7 @@ export async function getUnavailablePeriods(listingId) {
     return payload
 }
 
-export async function createBooking({listingId, checkIn, checkOut}) {
+export async function createBooking({listingId, startTime, endTime}) {
     const session = getSession()
     if (!session?.token) {
         throw new Error('Sign in with a customer account to request a booking.')
@@ -42,8 +38,8 @@ export async function createBooking({listingId, checkIn, checkOut}) {
         },
         body: JSON.stringify({
             listingId: Number(listingId),
-            startTime: toUtcMidnight(checkIn),
-            endTime: toUtcMidnight(checkOut),
+            startTime,
+            endTime,
         }),
     })
     const payload = await response.json().catch(() => null)

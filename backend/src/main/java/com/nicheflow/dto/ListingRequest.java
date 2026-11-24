@@ -30,5 +30,7 @@ public record ListingRequest(
 
         @NotBlank @Size(max = 255) String location,
 
-        @NotBlank @Size(max = 2000) String description) {
+        @NotBlank @Size(max = 2000) String description,
+
+        @Size(max = 64) String timeZone) {
 }

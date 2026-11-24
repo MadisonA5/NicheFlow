@@ -26,6 +26,7 @@ describe('NicheFlow landing page', () => {
                                          price,
                                          location,
                                          description,
+                                         timeZone,
                                      }) => ({
                     id,
                     title,
@@ -33,6 +34,7 @@ describe('NicheFlow landing page', () => {
                     price,
                     location,
                     description,
+                    timeZone,
                     supplierId: 1,
                     active: true,
                 })),
@@ -192,7 +194,7 @@ describe('NicheFlow landing page', () => {
         fireEvent.change(screen.getByRole('combobox', {name: 'Category'}), {
             target: {value: 'Outdoor'},
         })
-        fireEvent.change(screen.getByRole('spinbutton', {name: 'Maximum price per day'}), {
+        fireEvent.change(screen.getByRole('spinbutton', {name: 'Maximum price per hour'}), {
             target: {value: '30'},
         })
 
@@ -312,6 +314,7 @@ describe('NicheFlow landing page', () => {
             price: 38,
             location: 'Calgary, AB',
             description: 'A quiet place to work.',
+            timeZone: 'America/Edmonton',
             supplierId: 7,
             active: true,
         }
@@ -337,7 +340,7 @@ describe('NicheFlow landing page', () => {
         fireEvent.change(screen.getByRole('combobox', {name: 'Category'}), {
             target: {value: createdListing.category},
         })
-        fireEvent.change(screen.getByRole('spinbutton', {name: 'Price per day ($)'}), {
+        fireEvent.change(screen.getByRole('spinbutton', {name: 'Price per hour ($)'}), {
             target: {value: String(createdListing.price)},
         })
         fireEvent.change(screen.getByRole('textbox', {name: 'Location'}), {
@@ -345,6 +348,12 @@ describe('NicheFlow landing page', () => {
         })
         fireEvent.change(screen.getByRole('textbox', {name: 'Description'}), {
             target: {value: createdListing.description},
+        })
+        const timeZoneSelect = screen.getByRole('combobox', {name: /Listing time zone/})
+        expect(timeZoneSelect).toHaveValue(Intl.DateTimeFormat().resolvedOptions().timeZone)
+        expect(screen.getByRole('option', {name: 'America/Edmonton'})).toBeInTheDocument()
+        fireEvent.change(timeZoneSelect, {
+            target: {value: createdListing.timeZone},
         })
         fireEvent.click(screen.getByRole('button', {name: 'Create listing'}))
 
@@ -363,6 +372,7 @@ describe('NicheFlow landing page', () => {
                 price: 38,
                 location: 'Calgary, AB',
                 description: 'A quiet place to work.',
+                timeZone: createdListing.timeZone,
             }),
         })
     })
@@ -494,6 +504,7 @@ describe('NicheFlow landing page', () => {
             price: 38,
             location: 'Calgary, AB',
             description: 'A quiet place to work.',
+            timeZone: 'America/Edmonton',
             active: true,
         }
         const updated = {...listing, title: 'Bright garden workspace', price: 42}
@@ -517,7 +528,7 @@ describe('NicheFlow landing page', () => {
         fireEvent.change(within(form).getByRole('textbox', {name: 'Listing title'}), {
             target: {value: updated.title},
         })
-        fireEvent.change(within(form).getByRole('spinbutton', {name: 'Price per day ($)'}), {
+        fireEvent.change(within(form).getByRole('spinbutton', {name: 'Price per hour ($)'}), {
             target: {value: String(updated.price)},
         })
         fireEvent.click(within(form).getByRole('button', {name: 'Save changes'}))
@@ -525,7 +536,7 @@ describe('NicheFlow landing page', () => {
         expect(await screen.findByRole('heading', {name: updated.title}))
             .toBeInTheDocument()
         expect(screen.getByRole('heading', {name: updated.title})
-            .closest('article')).toHaveTextContent(/\$42\s*\/ day/)
+            .closest('article')).toHaveTextContent(/\$42\s*\/ hour/)
         expect(fetchMock).toHaveBeenCalledWith('/api/listings/14', {
             method: 'PUT',
             headers: {
@@ -538,6 +549,7 @@ describe('NicheFlow landing page', () => {
                 price: updated.price,
                 location: listing.location,
                 description: listing.description,
+                timeZone: listing.timeZone,
             }),
         })
     })
@@ -662,12 +674,12 @@ describe('NicheFlow landing page', () => {
             screen.getByText(/A bright, peaceful workspace tucked beside a sunny neighborhood garden/),
         ).toBeInTheDocument()
 
-        fireEvent.click(screen.getByRole('link', {name: 'Check dates'}))
+        fireEvent.click(screen.getByRole('link', {name: 'Book by the hour'}))
 
         expect(
             await screen.findByRole('heading', {name: 'Request a booking'}),
         ).toBeInTheDocument()
-        expect(screen.getByText('$38 × — days')).toBeInTheDocument()
+        expect(screen.getByText('$38 × — hours')).toBeInTheDocument()
         expect(
             screen.getByText(/Sign in with a customer account to request this booking/),
         ).toBeInTheDocument()
@@ -711,26 +723,19 @@ describe('NicheFlow landing page', () => {
         vi.stubGlobal('fetch', fetchMock)
         render(<App/>)
         fireEvent.click(await screen.findByRole('link', {name: 'Sunny garden studio'}))
-        fireEvent.click(await screen.findByRole('link', {name: 'Check dates'}))
+        fireEvent.click(await screen.findByRole('link', {name: 'Book by the hour'}))
         await screen.findByRole('heading', {name: 'Request a booking'})
 
-        const tomorrow = new Date()
-        tomorrow.setDate(tomorrow.getDate() + 1)
-        const checkout = new Date(tomorrow)
-        checkout.setDate(checkout.getDate() + 2)
-        const formatDate = (date) =>
-            `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+        fireEvent.change(screen.getByLabelText('Start time'), {
+            target: {value: '2031-03-01T10:00'},
+        })
+        fireEvent.change(screen.getByLabelText('End time'), {
+            target: {value: '2031-03-01T12:00'},
+        })
 
-        fireEvent.click(await screen.findByRole('button', {
-            name: formatDate(tomorrow),
-        }))
-        fireEvent.click(screen.getByRole('button', {
-            name: formatDate(checkout),
-        }))
-
-        expect(screen.getByText('$38 × 2 days')).toBeInTheDocument()
+        expect(screen.getByText('$38 × 2 hours')).toBeInTheDocument()
         expect(
-            within(screen.getByLabelText('Booking estimate')).getAllByText('$76'),
+            within(screen.getByLabelText('Booking estimate')).getAllByText('$76.00'),
         ).toHaveLength(2)
 
         fireEvent.click(screen.getByRole('button', {name: 'Request booking'}))
@@ -744,53 +749,48 @@ describe('NicheFlow landing page', () => {
             }),
             body: JSON.stringify({
                 listingId: listings[0].id,
-                startTime: `${formatDate(tomorrow)}T00:00:00Z`,
-                endTime: `${formatDate(checkout)}T00:00:00Z`,
+                startTime: '2031-03-01T17:00:00.000Z',
+                endTime: '2031-03-01T19:00:00.000Z',
             }),
         }))
     })
 
-    it('marks reserved booking dates unavailable while leaving the checkout boundary open', async () => {
+    it('marks overlapping hourly slots unavailable', async () => {
         localStorage.setItem('nicheflow.session', JSON.stringify({
             token: 'signed.jwt.token',
             user: {id: 9, email: 'neighbor@example.com', role: 'CUSTOMER'},
         }))
-        const tomorrow = new Date()
-        tomorrow.setDate(tomorrow.getDate() + 1)
-        const checkoutBoundary = new Date(tomorrow)
-        checkoutBoundary.setDate(checkoutBoundary.getDate() + 2)
-        const formatDate = (date) =>
-            `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
         const fetchMock = vi.fn((url) => singleListingResponse(url) ?? Promise.resolve({
             ok: true,
             json: async () => url.startsWith('/api/bookings/availability/')
                 ? [{
-                    startTime: `${formatDate(tomorrow)}T00:00:00Z`,
-                    endTime: `${formatDate(checkoutBoundary)}T00:00:00Z`,
+                    startTime: '2031-03-01T17:00:00Z',
+                    endTime: '2031-03-01T18:00:00Z',
                 }]
                 : {items: listings.map((listing) => ({...listing, active: true}))},
         }))
         vi.stubGlobal('fetch', fetchMock)
         render(<App/>)
         fireEvent.click(await screen.findByRole('link', {name: 'Sunny garden studio'}))
-        fireEvent.click(await screen.findByRole('link', {name: 'Check dates'}))
+        fireEvent.click(await screen.findByRole('link', {name: 'Book by the hour'}))
 
-        const unavailableDay = await screen.findByRole('button', {
-            name: `${formatDate(tomorrow)}, unavailable`,
+        fireEvent.change(await screen.findByLabelText('Start time'), {
+            target: {value: '2031-03-01T10:00'},
         })
-        expect(unavailableDay).toBeDisabled()
+        fireEvent.change(screen.getByLabelText('End time'), {
+            target: {value: '2031-03-01T11:00'},
+        })
 
-        const boundaryDay = screen.getByRole('button', {
-            name: formatDate(checkoutBoundary),
+        expect(await screen.findByRole('alert'))
+            .toHaveTextContent('overlaps an unavailable booking')
+        expect(screen.getByRole('button', {name: 'Request booking'})).toBeDisabled()
+
+        fireEvent.change(screen.getByLabelText('Start time'), {
+            target: {value: '2031-03-01T11:00'},
         })
-        expect(boundaryDay).toBeEnabled()
-        fireEvent.click(boundaryDay)
-        const displayDate = new Intl.DateTimeFormat(undefined, {
-            dateStyle: 'medium',
-            timeZone: 'UTC',
-        }).format(new Date(`${formatDate(checkoutBoundary)}T00:00:00Z`))
-        expect(screen.getByText(displayDate, {
-            selector: 'strong',
-        })).toBeInTheDocument()
+        fireEvent.change(screen.getByLabelText('End time'), {
+            target: {value: '2031-03-01T12:00'},
+        })
+        expect(screen.getByRole('button', {name: 'Request booking'})).toBeEnabled()
     })
 })

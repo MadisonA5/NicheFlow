@@ -7,7 +7,7 @@ describe('booking data source', () => {
         localStorage.clear()
     })
 
-    it('creates a pending booking with the customer bearer token and UTC dates', async () => {
+    it('creates a pending booking with UTC instants for the selected listing-zone hours', async () => {
         localStorage.setItem('nicheflow.session', JSON.stringify({
             token: 'signed.jwt.token',
             user: {id: 9, role: 'CUSTOMER'},
@@ -16,8 +16,9 @@ describe('booking data source', () => {
             id: 15,
             listingId: 3,
             status: 'PENDING',
-            startTime: '2026-11-01T00:00:00Z',
-            endTime: '2026-11-03T00:00:00Z',
+            startTime: '2026-11-01T16:00:00Z',
+            endTime: '2026-11-01T18:00:00Z',
+            timeZone: 'America/Edmonton',
         }
         const fetchMock = vi.fn().mockResolvedValue({
             ok: true,
@@ -27,8 +28,8 @@ describe('booking data source', () => {
 
         await expect(createBooking({
             listingId: '3',
-            checkIn: '2026-11-01',
-            checkOut: '2026-11-03',
+            startTime: '2026-11-01T16:00:00Z',
+            endTime: '2026-11-01T18:00:00Z',
         })).resolves.toEqual(booking)
 
         expect(fetchMock).toHaveBeenCalledWith('/api/bookings', {
@@ -39,8 +40,8 @@ describe('booking data source', () => {
             },
             body: JSON.stringify({
                 listingId: 3,
-                startTime: '2026-11-01T00:00:00Z',
-                endTime: '2026-11-03T00:00:00Z',
+                startTime: '2026-11-01T16:00:00Z',
+                endTime: '2026-11-01T18:00:00Z',
             }),
         })
     })
@@ -83,8 +84,8 @@ describe('booking data source', () => {
 
         await expect(createBooking({
             listingId: 3,
-            checkIn: '2026-11-01',
-            checkOut: '2026-11-03',
+            startTime: '2026-11-01T16:00:00Z',
+            endTime: '2026-11-01T18:00:00Z',
         })).rejects.toThrow('The requested dates are already booked')
     })
 
@@ -94,8 +95,8 @@ describe('booking data source', () => {
 
         await expect(createBooking({
             listingId: 3,
-            checkIn: '2026-11-01',
-            checkOut: '2026-11-03',
+            startTime: '2026-11-01T16:00:00Z',
+            endTime: '2026-11-01T18:00:00Z',
         })).rejects.toThrow('Sign in with a customer account')
         expect(fetchMock).not.toHaveBeenCalled()
     })

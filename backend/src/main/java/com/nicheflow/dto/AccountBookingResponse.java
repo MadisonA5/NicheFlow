@@ -15,7 +15,8 @@ public record AccountBookingResponse(
         String status,
         Instant startTime,
         Instant endTime,
-        BigDecimal refundAmount) {
+        BigDecimal refundAmount,
+        String timeZone) {
 
     public static AccountBookingResponse from(Booking booking) {
         return new AccountBookingResponse(
@@ -28,6 +29,7 @@ public record AccountBookingResponse(
                 booking.getStatus().name(),
                 booking.getStartTime(),
                 booking.getEndTime(),
-                booking.getRefundAmount());
+                booking.getRefundAmount(),
+                booking.getTimeZone());
     }
 }
