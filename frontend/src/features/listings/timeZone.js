@@ -70,8 +70,9 @@ export function getNextLocalHour(timeZone) {
         Number(parts.hour),
         Number(parts.minute),
     )
+    const minutesUntilNextHour = 60 - Number(parts.minute)
     const roundedHour = new Date(
-        wallClock + (Number(parts.minute) > 0 ? 3_600_000 : 0),
+        wallClock + minutesUntilNextHour * 60_000,
     )
     return localDateTimeString({
         year: String(roundedHour.getUTCFullYear()),

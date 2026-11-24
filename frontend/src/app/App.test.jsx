@@ -726,11 +726,17 @@ describe('NicheFlow landing page', () => {
         fireEvent.click(await screen.findByRole('link', {name: 'Book by the hour'}))
         await screen.findByRole('heading', {name: 'Request a booking'})
 
-        fireEvent.change(await screen.findByLabelText('Start time'), {
-            target: {value: '2031-07-15T10:00'},
+        fireEvent.change(await screen.findByLabelText('Start date'), {
+            target: {value: '2031-07-15'},
         })
-        fireEvent.change(screen.getByLabelText('End time'), {
-            target: {value: '2031-07-15T12:00'},
+        fireEvent.change(screen.getByLabelText('Start hour'), {
+            target: {value: '10:00'},
+        })
+        fireEvent.change(screen.getByLabelText('End date'), {
+            target: {value: '2031-07-15'},
+        })
+        fireEvent.change(screen.getByLabelText('End hour'), {
+            target: {value: '12:00'},
         })
 
         expect(screen.getByText('$38 × 2 hours')).toBeInTheDocument()
@@ -774,22 +780,28 @@ describe('NicheFlow landing page', () => {
         fireEvent.click(await screen.findByRole('link', {name: 'Sunny garden studio'}))
         fireEvent.click(await screen.findByRole('link', {name: 'Book by the hour'}))
 
-        fireEvent.change(await screen.findByLabelText('Start time'), {
-            target: {value: '2031-07-15T10:00'},
+        fireEvent.change(await screen.findByLabelText('Start date'), {
+            target: {value: '2031-07-15'},
         })
-        fireEvent.change(screen.getByLabelText('End time'), {
-            target: {value: '2031-07-15T11:00'},
+        fireEvent.change(screen.getByLabelText('Start hour'), {
+            target: {value: '10:00'},
+        })
+        fireEvent.change(screen.getByLabelText('End date'), {
+            target: {value: '2031-07-15'},
+        })
+        fireEvent.change(screen.getByLabelText('End hour'), {
+            target: {value: '11:00'},
         })
 
         expect(await screen.findByRole('alert'))
             .toHaveTextContent('overlaps an unavailable booking')
         expect(screen.getByRole('button', {name: 'Request booking'})).toBeDisabled()
 
-        fireEvent.change(screen.getByLabelText('Start time'), {
-            target: {value: '2031-07-15T11:00'},
+        fireEvent.change(screen.getByLabelText('Start hour'), {
+            target: {value: '11:00'},
         })
-        fireEvent.change(screen.getByLabelText('End time'), {
-            target: {value: '2031-07-15T12:00'},
+        fireEvent.change(screen.getByLabelText('End hour'), {
+            target: {value: '12:00'},
         })
         expect(screen.getByRole('button', {name: 'Request booking'})).toBeEnabled()
     })

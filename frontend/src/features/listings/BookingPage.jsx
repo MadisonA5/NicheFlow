@@ -16,11 +16,16 @@ function overlapsUnavailablePeriod(start, end, periods) {
         Date.parse(period.startTime) < end)
 }
 
+const bookingHours = Array.from({length: 24}, (_, hour) =>
+    `${String(hour).padStart(2, '0')}:00`)
+
 function BookingPage() {
     const {listingId} = useParams()
     const {listing, isLoading, loadError} = useListing(listingId)
-    const [startTime, setStartTime] = useState('')
-    const [endTime, setEndTime] = useState('')
+    const [startDate, setStartDate] = useState('')
+    const [startHour, setStartHour] = useState('')
+    const [endDate, setEndDate] = useState('')
+    const [endHour, setEndHour] = useState('')
     const [availabilityResult, setAvailabilityResult] = useState(null)
     const [message, setMessage] = useState('')
     const [booking, setBooking] = useState(null)
@@ -39,6 +44,10 @@ function BookingPage() {
     let selectedStart = null
     let selectedEnd = null
     let selectionError = ''
+    const startTime = startDate && startHour
+        ? `${startDate}T${startHour}`
+        : ''
+    const endTime = endDate && endHour ? `${endDate}T${endHour}` : ''
 
     if (listing && startTime && endTime) {
         try {
@@ -162,34 +171,76 @@ function BookingPage() {
                         ) : (
                             <>
                                 <label className="auth-field">
-                                    <span>Start time ({listing.timeZone})</span>
+                                    <span>Start date</span>
                                     <input
-                                        aria-label="Start time"
-                                        type="datetime-local"
-                                        step="3600"
-                                        min={getNextLocalHour(listing.timeZone)}
-                                        value={startTime}
+                                        aria-label="Start date"
+                                        type="date"
+                                        min={getNextLocalHour(listing.timeZone).slice(0, 10)}
+                                        value={startDate}
                                         onChange={(event) => {
-                                            setStartTime(event.target.value)
+                                            setStartDate(event.target.value)
                                             setMessage('')
                                         }}
                                         required
                                     />
                                 </label>
                                 <label className="auth-field">
-                                    <span>End time ({listing.timeZone})</span>
-                                    <input
-                                        aria-label="End time"
-                                        type="datetime-local"
-                                        step="3600"
-                                        min={startTime || getNextLocalHour(listing.timeZone)}
-                                        value={endTime}
+                                    <span>Start hour ({listing.timeZone})</span>
+                                    <select
+                                        aria-label="Start hour"
+                                        value={startHour}
                                         onChange={(event) => {
-                                            setEndTime(event.target.value)
+                                            setStartHour(event.target.value)
+                                            setMessage('')
+                                        }}
+                                        required
+                                    >
+                                        <option value="">Choose an hour</option>
+                                        {bookingHours.map((hour) => (
+                                            <option key={hour} value={hour}
+                                                disabled={startDate === getNextLocalHour(listing.timeZone).slice(0, 10) &&
+                                                    hour < getNextLocalHour(listing.timeZone).slice(11)}
+                                            >
+                                                {hour}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </label>
+                                <label className="auth-field">
+                                    <span>End date</span>
+                                    <input
+                                        aria-label="End date"
+                                        type="date"
+                                        min={startDate || getNextLocalHour(listing.timeZone).slice(0, 10)}
+                                        value={endDate}
+                                        onChange={(event) => {
+                                            setEndDate(event.target.value)
                                             setMessage('')
                                         }}
                                         required
                                     />
+                                </label>
+                                <label className="auth-field">
+                                    <span>End hour ({listing.timeZone})</span>
+                                    <select
+                                        aria-label="End hour"
+                                        value={endHour}
+                                        onChange={(event) => {
+                                            setEndHour(event.target.value)
+                                            setMessage('')
+                                        }}
+                                        required
+                                    >
+                                        <option value="">Choose an hour</option>
+                                        {bookingHours.map((hour) => (
+                                            <option key={hour} value={hour}
+                                                disabled={endDate === startDate && Boolean(startHour) &&
+                                                    hour < startHour}
+                                            >
+                                                {hour}
+                                            </option>
+                                        ))}
+                                    </select>
                                 </label>
                             </>
                         )}

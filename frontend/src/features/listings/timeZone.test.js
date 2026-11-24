@@ -1,10 +1,15 @@
-import {describe, expect, it} from 'vitest'
+import {afterEach, describe, expect, it, vi} from 'vitest'
 import {
     formatDateTimeInZone,
+    getNextLocalHour,
     localDateTimeToInstant,
 } from './timeZone'
 
 describe('listing time zones', () => {
+    afterEach(() => {
+        vi.useRealTimers()
+    })
+
     it('converts a local booking time to its listing-zone instant', () => {
         expect(localDateTimeToInstant(
             '2026-07-15T12:00', 'America/Edmonton',
@@ -35,5 +40,13 @@ describe('listing time zones', () => {
         expect(formatDateTimeInZone(
             '2026-07-15T18:00:00Z', 'America/Edmonton',
         )).toContain('12:00')
+    })
+
+    it('rounds the minimum booking time up to a whole local hour', () => {
+        vi.useFakeTimers()
+        vi.setSystemTime(new Date('2026-07-15T16:29:00Z'))
+
+        expect(getNextLocalHour('America/Edmonton'))
+            .toBe('2026-07-15T11:00')
     })
 })
