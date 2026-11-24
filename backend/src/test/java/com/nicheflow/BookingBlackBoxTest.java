@@ -171,6 +171,7 @@ class BookingBlackBoxTest {
     /**
      * Boundary: a window that starts exactly when the other ends is
      * allowed. Assumes the database range is half-open [start, end);
+     * if this fails, ask the team which behaviour is intended.
      */
     @Test
     void backToBackWindowsAreAllowed() throws Exception {
