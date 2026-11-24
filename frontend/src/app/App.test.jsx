@@ -726,7 +726,7 @@ describe('NicheFlow landing page', () => {
         fireEvent.click(await screen.findByRole('link', {name: 'Book by the hour'}))
         await screen.findByRole('heading', {name: 'Request a booking'})
 
-        fireEvent.change(screen.getByLabelText('Start time'), {
+        fireEvent.change(await screen.findByLabelText('Start time'), {
             target: {value: '2031-07-15T10:00'},
         })
         fireEvent.change(screen.getByLabelText('End time'), {
