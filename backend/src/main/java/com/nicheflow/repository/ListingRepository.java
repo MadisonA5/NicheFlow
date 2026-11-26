@@ -13,9 +13,12 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
+import jakarta.persistence.LockModeType;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -34,6 +37,21 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
             ORDER BY listing.id DESC
             """)
     List<Listing> findAllBySupplierId(@Param("supplierId") Long supplierId);
+
+    /**
+     * findByIdForUpdate - This function loads a listing under a
+     * PESSIMISTIC_WRITE lock so a booking create and a blackout
+     * create on the same listing serialize instead of each reading
+     * the other's table before either has committed.
+     *
+     * Parameters:
+     * listingId - The listing to lock
+     *
+     * Return - The listing, locked for the rest of this transaction
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT listing FROM Listing listing WHERE listing.id = :listingId")
+    Optional<Listing> findByIdForUpdate(@Param("listingId") Long listingId);
 
     @Query("""
             SELECT listing FROM Listing listing

@@ -23,7 +23,9 @@ package com.nicheflow.service;
 import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.time.Instant;
+import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Stream;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.PessimisticLockingFailureException;
@@ -31,6 +33,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.nicheflow.exception.BookingAccessDeniedException;
+import com.nicheflow.exception.BookingBlackoutException;
 import com.nicheflow.exception.BookingConflictException;
 import com.nicheflow.exception.BookingNotFoundException;
 import com.nicheflow.exception.InvalidBookingException;
@@ -44,6 +47,7 @@ import com.nicheflow.model.Role;
 import com.nicheflow.model.User;
 import com.nicheflow.payment.PaymentClient;
 import com.nicheflow.repository.BookingRepository;
+import com.nicheflow.repository.ListingBlackoutRepository;
 import com.nicheflow.repository.ListingRepository;
 import com.nicheflow.repository.UserRepository;
 import com.nicheflow.security.AuthenticatedUser;
@@ -68,6 +72,7 @@ public class BookingService {
     private final ListingRepository listingRepository;
     private final UserRepository userRepository;
     private final PaymentClient paymentClient;
+    private final ListingBlackoutRepository listingBlackoutRepository;
 
     /**
      * BookingService - This function stores the repositories and the
@@ -79,14 +84,19 @@ public class BookingService {
      * listingRepository - The listings table access point
      * userRepository - The users table access point
      * paymentClient - The mocked Stripe charge port
+     * listingBlackoutRepository - The listing_blackouts table access
+     *     point used to reject a window inside a supplier blackout
+     *     and to merge blackouts into the availability view
      */
     public BookingService(BookingRepository bookingRepository,
             ListingRepository listingRepository,
-            UserRepository userRepository, PaymentClient paymentClient) {
+            UserRepository userRepository, PaymentClient paymentClient,
+            ListingBlackoutRepository listingBlackoutRepository) {
         this.bookingRepository = bookingRepository;
         this.listingRepository = listingRepository;
         this.userRepository = userRepository;
         this.paymentClient = paymentClient;
+        this.listingBlackoutRepository = listingBlackoutRepository;
     }
 
     /**
@@ -121,25 +131,58 @@ public class BookingService {
         // To book only a listing that is still offered
         Listing listing = loadBookableListing(listingId);
 
+        // To reject a window the supplier marked as a blackout
+        rejectWindowInsideBlackout(listing.getId(), startTime, endTime);
+
         return insertPendingBooking(listing, customer, startTime,
                 endTime);
     }
 
     /**
-     * getUnavailablePeriods - This function returns date windows
-     * reserved by pending, accepted, or confirmed bookings.
+     * rejectWindowInsideBlackout - This function throws when the
+     * requested window overlaps any blackout the supplier stored on
+     * this listing.
      *
      * Parameters:
-     * listingId - The listing whose booked dates are requested
+     * listingId - The listing being booked
+     * startTime - The slot start, a UTC instant
+     * endTime - The slot end, a UTC instant
+     */
+    private void rejectWindowInsideBlackout(Long listingId,
+            Instant startTime, Instant endTime) {
+        if (listingBlackoutRepository.existsOverlapping(listingId,
+                startTime, endTime)) {
+            throw new BookingBlackoutException();
+        }
+    }
+
+    /**
+     * getUnavailablePeriods - This function returns date windows
+     * reserved by pending, accepted, or confirmed bookings, merged
+     * with the supplier's blackout windows on that listing, earliest
+     * first.
      *
-     * Return - The active booking windows, excluding cancellations
+     * Parameters:
+     * listingId - The listing whose unavailable dates are requested
+     *
+     * Return - The active booking windows plus blackout windows
      */
     @Transactional(readOnly = true)
     public List<BookingAvailabilityResponse> getUnavailablePeriods(
             Long listingId) {
-        return bookingRepository.findUnavailableBookingsByListingId(
-                        listingId).stream()
-                .map(BookingAvailabilityResponse::from)
+        Stream<BookingAvailabilityResponse> bookingPeriods =
+                bookingRepository.findUnavailableBookingsByListingId(
+                                listingId).stream()
+                        .map(BookingAvailabilityResponse::from);
+
+        Stream<BookingAvailabilityResponse> blackoutPeriods =
+                listingBlackoutRepository.findByListingId(listingId)
+                        .stream()
+                        .map(BookingAvailabilityResponse::from);
+
+        return Stream.concat(bookingPeriods, blackoutPeriods)
+                .sorted(Comparator.comparing(
+                        BookingAvailabilityResponse::startTime))
                 .toList();
     }
 
@@ -556,8 +599,10 @@ public class BookingService {
     }
 
     /**
-     * loadBookableListing - This function loads the listing and
-     * rejects one that has been deactivated.
+     * loadBookableListing - This function loads the listing under
+     * the same PESSIMISTIC_WRITE lock a blackout create takes, so the
+     * two cannot each pass the other's overlap check before either
+     * commits, and rejects a listing that has been deactivated.
      *
      * Parameters:
      * listingId - The listing the customer asked to book
@@ -565,7 +610,7 @@ public class BookingService {
      * Return - The active listing
      */
     private Listing loadBookableListing(Long listingId) {
-        Listing listing = listingRepository.findById(listingId)
+        Listing listing = listingRepository.findByIdForUpdate(listingId)
                 .orElseThrow(() -> new ListingNotFoundException(
                         listingId));
 

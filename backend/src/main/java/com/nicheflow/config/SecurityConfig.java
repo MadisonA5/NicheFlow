@@ -148,6 +148,17 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST,
                         "/api/listings/*/deactivate")
                         .hasRole("SUPPLIER")
+                // BO-01 blackouts. List is public, same as booking
+                // availability; create/delete stay supplier-owner-only,
+                // enforced again in ListingBlackoutService.
+                .requestMatchers(HttpMethod.GET,
+                        "/api/listings/*/blackouts").permitAll()
+                .requestMatchers(HttpMethod.POST,
+                        "/api/listings/*/blackouts")
+                        .hasRole("SUPPLIER")
+                .requestMatchers(HttpMethod.DELETE,
+                        "/api/listings/*/blackouts/*")
+                        .hasRole("SUPPLIER")
                 // BK-01 create. Overlap rejection is in BookingService.
                 .requestMatchers(HttpMethod.POST, "/api/bookings")
                         .hasRole("CUSTOMER")

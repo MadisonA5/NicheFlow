@@ -186,6 +186,70 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * handleBookingBlackout - This function maps a booking window
+     * that falls inside a supplier blackout to HTTP 409.
+     *
+     * Parameters:
+     * exception - The blacked-out booking create
+     *
+     * Return - A conflict problem detail
+     */
+    @ExceptionHandler(BookingBlackoutException.class)
+    public ProblemDetail handleBookingBlackout(
+            BookingBlackoutException exception) {
+        return problem(HttpStatus.CONFLICT, "Listing unavailable",
+                exception.getMessage());
+    }
+
+    /**
+     * handleBlackoutConflict - This function maps a blackout that
+     * overlaps an existing blackout or booking to HTTP 409.
+     *
+     * Parameters:
+     * exception - The overlap error from blackout create
+     *
+     * Return - A conflict problem detail
+     */
+    @ExceptionHandler(BlackoutConflictException.class)
+    public ProblemDetail handleBlackoutConflict(
+            BlackoutConflictException exception) {
+        return problem(HttpStatus.CONFLICT, "Blackout conflict",
+                exception.getMessage());
+    }
+
+    /**
+     * handleInvalidBlackout - This function maps a blackout window
+     * that does not move forward to HTTP 400.
+     *
+     * Parameters:
+     * exception - The rejected blackout create
+     *
+     * Return - A bad-request problem detail
+     */
+    @ExceptionHandler(InvalidBlackoutException.class)
+    public ProblemDetail handleInvalidBlackout(
+            InvalidBlackoutException exception) {
+        return problem(HttpStatus.BAD_REQUEST, "Invalid blackout",
+                exception.getMessage());
+    }
+
+    /**
+     * handleBlackoutNotFound - This function maps a missing or
+     * mismatched blackout id to HTTP 404.
+     *
+     * Parameters:
+     * exception - The missing-blackout error
+     *
+     * Return - A not-found problem detail
+     */
+    @ExceptionHandler(BlackoutNotFoundException.class)
+    public ProblemDetail handleBlackoutNotFound(
+            BlackoutNotFoundException exception) {
+        return problem(HttpStatus.NOT_FOUND, "Blackout not found",
+                exception.getMessage());
+    }
+
+    /**
      * handleInvalidSearch - This function maps a bad LST-02 price
      * range or page request to HTTP 400.
      *
