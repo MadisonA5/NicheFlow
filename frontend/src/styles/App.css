@@ -1033,7 +1033,7 @@ h2 {
 .account-item {
   padding: 18px 20px;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 20px;
   border: 1px solid #eeeee7;
@@ -1148,6 +1148,47 @@ h2 {
   text-align: right;
 }
 
+.account-blackouts-panel {
+  width: 100%;
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid #dfe4da;
+  border-radius: 12px;
+  background: #fbfcf8;
+}
+
+.account-blackouts-panel form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.account-blackouts-panel form .auth-field:last-of-type,
+.account-blackouts-panel form .booking-link {
+  grid-column: 1 / -1;
+}
+
+.account-blackouts-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.account-blackouts-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.account-blackouts-empty {
+  color: #73756b;
+}
+
 @media (max-width: 600px) {
   .account-page {
     width: min(100% - 36px, 920px);
@@ -1179,6 +1220,20 @@ h2 {
   .account-edit-form .auth-field:last-of-type,
   .account-edit-form .account-listing-actions {
     grid-column: auto;
+  }
+
+  .account-blackouts-panel form {
+    grid-template-columns: 1fr;
+  }
+
+  .account-blackouts-panel form .auth-field:last-of-type,
+  .account-blackouts-panel form .booking-link {
+    grid-column: auto;
+  }
+
+  .account-blackouts-list li {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
 

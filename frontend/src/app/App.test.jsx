@@ -586,6 +586,184 @@ describe('NicheFlow landing page', () => {
         })
     })
 
+    it('lets a supplier add and remove a blackout from their account page', async () => {
+        localStorage.setItem('nicheflow.session', JSON.stringify({
+            token: 'supplier.jwt.token',
+            user: {id: 7, email: 'maker@example.com', role: 'SUPPLIER'},
+        }))
+        const listing = {
+            id: 14,
+            title: 'Garden workspace',
+            category: 'Workspace',
+            price: 38,
+            location: 'Calgary, AB',
+            description: 'A quiet place to work.',
+            active: true,
+        }
+        const created = {
+            id: 5,
+            listingId: 14,
+            startTime: '2026-12-01T00:00:00Z',
+            endTime: '2026-12-05T00:00:00Z',
+            reason: 'Vacation',
+            createdAt: '2026-11-01T00:00:00Z',
+        }
+        let blackouts = []
+        const fetchMock = vi.fn((url, options) => {
+            if (url === '/api/listings/14/blackouts' && !options) {
+                return Promise.resolve({ok: true, json: async () => blackouts})
+            }
+            if (url === '/api/listings/14/blackouts' && options?.method === 'POST') {
+                blackouts = [created]
+                return Promise.resolve({ok: true, json: async () => created})
+            }
+            if (url === '/api/listings/14/blackouts/5' && options?.method === 'DELETE') {
+                blackouts = []
+                return Promise.resolve({ok: true, status: 204})
+            }
+            return Promise.resolve({
+                ok: true,
+                json: async () => (url === '/api/account'
+                    ? {listings: [listing], bookings: []}
+                    : {items: []}),
+            })
+        })
+        vi.stubGlobal('fetch', fetchMock)
+        render(<App/>)
+
+        fireEvent.click(await screen.findByRole('link', {name: 'My account'}))
+        fireEvent.click(await screen.findByRole('button', {name: 'Blackout dates'}))
+        expect(await screen.findByText('No blackout dates yet.')).toBeInTheDocument()
+
+        fireEvent.change(screen.getByLabelText('Start date'), {
+            target: {value: '2026-12-01'},
+        })
+        fireEvent.change(screen.getByLabelText('End date'), {
+            target: {value: '2026-12-05'},
+        })
+        fireEvent.change(screen.getByRole('textbox', {name: 'Reason (optional)'}), {
+            target: {value: 'Vacation'},
+        })
+        fireEvent.click(screen.getByRole('button', {name: 'Add blackout'}))
+
+        expect(await screen.findByText('(Vacation)')).toBeInTheDocument()
+        expect(fetchMock).toHaveBeenCalledWith('/api/listings/14/blackouts', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: 'Bearer supplier.jwt.token',
+            },
+            body: JSON.stringify({
+                startTime: '2026-12-01T00:00:00Z',
+                endTime: '2026-12-05T00:00:00Z',
+                reason: 'Vacation',
+            }),
+        })
+
+        fireEvent.click(screen.getByRole('button', {name: 'Remove'}))
+
+        expect(await screen.findByText('No blackout dates yet.')).toBeInTheDocument()
+        expect(fetchMock).toHaveBeenCalledWith('/api/listings/14/blackouts/5', {
+            method: 'DELETE',
+            headers: {Authorization: 'Bearer supplier.jwt.token'},
+        })
+    })
+
+    it('shows an error message when adding a blackout fails', async () => {
+        localStorage.setItem('nicheflow.session', JSON.stringify({
+            token: 'supplier.jwt.token',
+            user: {id: 7, email: 'maker@example.com', role: 'SUPPLIER'},
+        }))
+        const listing = {
+            id: 14,
+            title: 'Garden workspace',
+            category: 'Workspace',
+            price: 38,
+            location: 'Calgary, AB',
+            description: 'A quiet place to work.',
+            active: true,
+        }
+        const fetchMock = vi.fn((url, options) => {
+            if (url === '/api/listings/14/blackouts' && !options) {
+                return Promise.resolve({ok: true, json: async () => []})
+            }
+            if (url === '/api/listings/14/blackouts' && options?.method === 'POST') {
+                return Promise.resolve({
+                    ok: false,
+                    status: 409,
+                    json: async () => ({detail: 'That window overlaps an existing blackout'}),
+                })
+            }
+            return Promise.resolve({
+                ok: true,
+                json: async () => (url === '/api/account'
+                    ? {listings: [listing], bookings: []}
+                    : {items: []}),
+            })
+        })
+        vi.stubGlobal('fetch', fetchMock)
+        render(<App/>)
+
+        fireEvent.click(await screen.findByRole('link', {name: 'My account'}))
+        fireEvent.click(await screen.findByRole('button', {name: 'Blackout dates'}))
+        await screen.findByText('No blackout dates yet.')
+
+        fireEvent.change(screen.getByLabelText('Start date'), {
+            target: {value: '2026-12-01'},
+        })
+        fireEvent.change(screen.getByLabelText('End date'), {
+            target: {value: '2026-12-05'},
+        })
+        fireEvent.click(screen.getByRole('button', {name: 'Add blackout'}))
+
+        expect(await screen.findByRole('alert')).toHaveTextContent(
+            'That window overlaps an existing blackout',
+        )
+    })
+
+    it('disables blackout dates for a deactivated listing', async () => {
+        localStorage.setItem('nicheflow.session', JSON.stringify({
+            token: 'supplier.jwt.token',
+            user: {id: 7, email: 'maker@example.com', role: 'SUPPLIER'},
+        }))
+        const listing = {
+            id: 14,
+            title: 'Garden workspace',
+            category: 'Workspace',
+            price: 38,
+            location: 'Calgary, AB',
+            description: 'A quiet place to work.',
+            active: true,
+        }
+        const deactivated = {...listing, active: false}
+        const fetchMock = vi.fn((url) => {
+            if (url === '/api/listings/14/deactivate') {
+                return Promise.resolve({ok: true, json: async () => deactivated})
+            }
+            return Promise.resolve({
+                ok: true,
+                json: async () => (url === '/api/account'
+                    ? {listings: [listing], bookings: []}
+                    : {items: []}),
+            })
+        })
+        vi.stubGlobal('fetch', fetchMock)
+        render(<App/>)
+
+        fireEvent.click(await screen.findByRole('link', {name: 'My account'}))
+        expect(await screen.findByRole('button', {name: 'Blackout dates'}))
+            .toBeEnabled()
+
+        fireEvent.click(screen.getByRole('button', {name: 'Deactivate'}))
+        fireEvent.click(screen.getByRole('button', {name: 'Confirm deactivate'}))
+
+        await screen.findByText('Inactive')
+        expect(screen.getByRole('button', {name: 'Blackout dates'}))
+            .toBeDisabled()
+        expect(fetchMock).not.toHaveBeenCalledWith(
+            '/api/listings/14/blackouts', expect.anything())
+    })
+
     it('signs in through the backend and stores the returned session', async () => {
         const user = {id: 9, email: 'neighbor@example.com', role: 'CUSTOMER'}
         const fetchMock = vi.fn()

@@ -12,6 +12,7 @@ package com.nicheflow.service;
 import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -31,19 +32,25 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
+import com.nicheflow.TestBlackouts;
+import com.nicheflow.TestBookings;
 import com.nicheflow.TestListings;
 import com.nicheflow.TestUsers;
+import com.nicheflow.dto.BookingAvailabilityResponse;
 import com.nicheflow.exception.BookingAccessDeniedException;
+import com.nicheflow.exception.BookingBlackoutException;
 import com.nicheflow.exception.BookingConflictException;
 import com.nicheflow.exception.InvalidBookingException;
 import com.nicheflow.exception.ListingNotFoundException;
 import com.nicheflow.model.Booking;
 import com.nicheflow.model.BookingStatus;
 import com.nicheflow.model.Listing;
+import com.nicheflow.model.ListingBlackout;
 import com.nicheflow.model.Role;
 import com.nicheflow.model.User;
 import com.nicheflow.payment.PaymentClient;
 import com.nicheflow.repository.BookingRepository;
+import com.nicheflow.repository.ListingBlackoutRepository;
 import com.nicheflow.repository.ListingRepository;
 import com.nicheflow.repository.UserRepository;
 import com.nicheflow.security.AuthenticatedUser;
@@ -79,6 +86,9 @@ class BookingServiceTest {
     @Mock
     private PaymentClient paymentClient;
 
+    @Mock
+    private ListingBlackoutRepository listingBlackoutRepository;
+
     @InjectMocks
     private BookingService bookingService;
 
@@ -94,7 +104,7 @@ class BookingServiceTest {
     void createStoresAPendingBookingForTheCustomer() {
         given(userRepository.findById(9L))
                 .willReturn(Optional.of(customer));
-        given(listingRepository.findById(3L))
+        given(listingRepository.findByIdForUpdate(3L))
                 .willReturn(Optional.of(listing));
         given(bookingRepository.saveAndFlush(any(Booking.class)))
                 .willAnswer(call -> call.getArgument(0));
@@ -134,7 +144,7 @@ class BookingServiceTest {
     void createRejectsAMissingListing() {
         given(userRepository.findById(9L))
                 .willReturn(Optional.of(customer));
-        given(listingRepository.findById(99L)).willReturn(Optional.empty());
+        given(listingRepository.findByIdForUpdate(99L)).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> bookingService.create(customerCaller,
                 99L, START, END))
@@ -152,7 +162,7 @@ class BookingServiceTest {
         listing.setActive(false);
         given(userRepository.findById(9L))
                 .willReturn(Optional.of(customer));
-        given(listingRepository.findById(3L))
+        given(listingRepository.findByIdForUpdate(3L))
                 .willReturn(Optional.of(listing));
 
         assertThatThrownBy(() -> bookingService.create(customerCaller,
@@ -161,6 +171,70 @@ class BookingServiceTest {
                 .hasMessage("This listing is not available");
 
         verify(bookingRepository, never()).saveAndFlush(any());
+    }
+
+    /**
+     * createRejectsABookingThatOverlapsABlackout - This function
+     * proves a window inside a supplier blackout never reaches the
+     * insert.
+     */
+    @Test
+    void createRejectsABookingThatOverlapsABlackout() {
+        givenReadyListing();
+        given(listingBlackoutRepository.existsOverlapping(3L, START, END))
+                .willReturn(true);
+
+        assertThatThrownBy(() -> bookingService.create(customerCaller,
+                3L, START, END))
+                .isInstanceOf(BookingBlackoutException.class);
+
+        verify(bookingRepository, never()).saveAndFlush(any());
+    }
+
+    /**
+     * createAllowsABookingOutsideAnyBlackoutWindow - This function
+     * proves the booking still inserts when no blackout overlaps.
+     */
+    @Test
+    void createAllowsABookingOutsideAnyBlackoutWindow() {
+        givenReadyListing();
+        given(listingBlackoutRepository.existsOverlapping(3L, START, END))
+                .willReturn(false);
+        given(bookingRepository.saveAndFlush(any(Booking.class)))
+                .willAnswer(call -> call.getArgument(0));
+
+        Booking stored = bookingService.create(customerCaller, 3L, START,
+                END);
+
+        assertThat(stored.getStatus()).isEqualTo(BookingStatus.PENDING);
+    }
+
+    /**
+     * getUnavailablePeriodsMergesBookingsAndBlackouts - This function
+     * proves the merged list contains both a booking-derived and a
+     * blackout-derived period, sorted by start time.
+     */
+    @Test
+    void getUnavailablePeriodsMergesBookingsAndBlackouts() {
+        Instant blackoutStart = START.plusSeconds(3600 * 24);
+        Instant blackoutEnd = blackoutStart.plusSeconds(3600);
+        Booking reserved = TestBookings.withId(11L, listing, customer,
+                START, END);
+        ListingBlackout blackout = TestBlackouts.withId(5L, listing,
+                blackoutStart, blackoutEnd, "Vacation");
+
+        given(bookingRepository.findUnavailableBookingsByListingId(3L))
+                .willReturn(List.of(reserved));
+        given(listingBlackoutRepository.findByListingId(3L))
+                .willReturn(List.of(blackout));
+
+        List<BookingAvailabilityResponse> periods = bookingService
+                .getUnavailablePeriods(3L);
+
+        assertThat(periods).containsExactly(
+                new BookingAvailabilityResponse(START, END),
+                new BookingAvailabilityResponse(blackoutStart,
+                        blackoutEnd));
     }
 
     /**
@@ -175,7 +249,7 @@ class BookingServiceTest {
                 .hasMessage("endTime must be after startTime");
 
         verify(bookingRepository, never()).saveAndFlush(any());
-        verify(listingRepository, never()).findById(any());
+        verify(listingRepository, never()).findByIdForUpdate(any());
     }
 
     /**
@@ -237,7 +311,7 @@ class BookingServiceTest {
     private void givenReadyListing() {
         given(userRepository.findById(9L))
                 .willReturn(Optional.of(customer));
-        given(listingRepository.findById(3L))
+        given(listingRepository.findByIdForUpdate(3L))
                 .willReturn(Optional.of(listing));
     }
 

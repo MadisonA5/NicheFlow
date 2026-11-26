@@ -43,6 +43,7 @@ import com.nicheflow.payment.MockStripePaymentClient;
 import com.nicheflow.payment.PaymentCharge;
 import com.nicheflow.payment.PaymentClient;
 import com.nicheflow.repository.BookingRepository;
+import com.nicheflow.repository.ListingBlackoutRepository;
 import com.nicheflow.repository.ListingRepository;
 import com.nicheflow.repository.UserRepository;
 import com.nicheflow.security.AuthenticatedUser;
@@ -86,6 +87,9 @@ class BookingAuthorizationTest {
 
     @Mock
     private PaymentClient paymentClient;
+
+    @Mock
+    private ListingBlackoutRepository listingBlackoutRepository;
 
     @InjectMocks
     private BookingService bookingService;
@@ -329,7 +333,8 @@ class BookingAuthorizationTest {
     void retriedConfirmDoesNotDoubleCharge() {
         MockStripePaymentClient payments = new MockStripePaymentClient();
         BookingService service = new BookingService(bookingRepository,
-                listingRepository, userRepository, payments);
+                listingRepository, userRepository, payments,
+                listingBlackoutRepository);
         Booking booking = load(BookingStatus.PENDING);
         stubSave();
 

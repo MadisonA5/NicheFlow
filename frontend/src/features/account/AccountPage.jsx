@@ -7,14 +7,25 @@ import {
     getAccount,
     updateListing,
 } from './accountDataSource'
+import {
+    createBlackout,
+    deleteBlackout,
+    listBlackouts,
+} from '../listings/blackoutsDataSource'
 
 const categories = ['Workspace', 'Outdoor', 'Events', 'Services', 'Other']
+
+const emptyBlackoutForm = {startDate: '', endDate: '', reason: ''}
 
 function formatDateTime(value) {
     return new Intl.DateTimeFormat(undefined, {
         dateStyle: 'medium',
         timeStyle: 'short',
     }).format(new Date(value))
+}
+
+function toUtcMidnight(date) {
+    return `${date}T00:00:00Z`
 }
 
 function AccountPage() {
@@ -30,6 +41,11 @@ function AccountPage() {
     const [actionError, setActionError] = useState('')
     const [workingBookingId, setWorkingBookingId] = useState(null)
     const [bookingActionError, setBookingActionError] = useState('')
+    const [expandedBlackoutsListingId, setExpandedBlackoutsListingId] = useState(null)
+    const [blackoutsByListingId, setBlackoutsByListingId] = useState({})
+    const [blackoutForm, setBlackoutForm] = useState(emptyBlackoutForm)
+    const [blackoutError, setBlackoutError] = useState('')
+    const [workingBlackoutListingId, setWorkingBlackoutListingId] = useState(null)
 
     useEffect(() => {
         let isCurrent = true
@@ -124,6 +140,75 @@ function AccountPage() {
             setBookingActionError(error.message)
         } finally {
             setWorkingBookingId(null)
+        }
+    }
+
+    async function toggleBlackouts(listing) {
+        if (expandedBlackoutsListingId === listing.id) {
+            setExpandedBlackoutsListingId(null)
+            return
+        }
+
+        setExpandedBlackoutsListingId(listing.id)
+        setBlackoutForm(emptyBlackoutForm)
+        setBlackoutError('')
+
+        if (blackoutsByListingId[listing.id]) {
+            return
+        }
+
+        try {
+            const blackouts = await listBlackouts(listing.id)
+            setBlackoutsByListingId((current) => ({
+                ...current,
+                [listing.id]: blackouts,
+            }))
+        } catch (error) {
+            setBlackoutError(error.message)
+        }
+    }
+
+    function handleBlackoutFormChange(event) {
+        const {name, value} = event.target
+        setBlackoutForm((current) => ({...current, [name]: value}))
+    }
+
+    async function handleAddBlackout(event, listingId) {
+        event.preventDefault()
+        setWorkingBlackoutListingId(listingId)
+        setBlackoutError('')
+        try {
+            const created = await createBlackout(listingId, {
+                startTime: toUtcMidnight(blackoutForm.startDate),
+                endTime: toUtcMidnight(blackoutForm.endDate),
+                reason: blackoutForm.reason || null,
+            })
+            setBlackoutsByListingId((current) => ({
+                ...current,
+                [listingId]: [...(current[listingId] ?? []), created],
+            }))
+            setBlackoutForm(emptyBlackoutForm)
+        } catch (error) {
+            setBlackoutError(error.message)
+        } finally {
+            setWorkingBlackoutListingId(null)
+        }
+    }
+
+    async function handleRemoveBlackout(listingId, blackoutId) {
+        setWorkingBlackoutListingId(listingId)
+        setBlackoutError('')
+        try {
+            await deleteBlackout(listingId, blackoutId)
+            setBlackoutsByListingId((current) => ({
+                ...current,
+                [listingId]: (current[listingId] ?? [])
+                    .filter((blackout) => blackout.id !== blackoutId),
+            }))
+        } catch (error) {
+            setBlackoutError(error.message)
+        } finally {
+            setWorkingBlackoutListingId(null)
         }
     }
 
@@ -271,7 +356,87 @@ function AccountPage() {
                                                                     Deactivate
                                                                 </button>
                                                             )}
+                                                            <button className="account-action-button"
+                                                                type="button"
+                                                                disabled={!listing.active}
+                                                                title={listing.active ? undefined :
+                                                                    'Reactivate this listing to manage blackout dates.'}
+                                                                onClick={() => toggleBlackouts(listing)}>
+                                                                Blackout dates
+                                                            </button>
                                                         </div>
+                                                        {listing.active && expandedBlackoutsListingId === listing.id && (
+                                                            <div className="account-blackouts-panel">
+                                                                <ul className="account-blackouts-list">
+                                                                    {(blackoutsByListingId[listing.id] ?? [])
+                                                                        .map((blackout) => (
+                                                                        <li key={blackout.id}>
+                                                                            <span>
+                                                                                {formatDateTime(blackout.startTime)}
+                                                                                {' – '}
+                                                                                {formatDateTime(blackout.endTime)}
+                                                                                {blackout.reason && (
+                                                                                    <span> ({blackout.reason})</span>
+                                                                                )}
+                                                                            </span>
+                                                                            <button
+                                                                                className="account-action-button danger"
+                                                                                type="button"
+                                                                                disabled={workingBlackoutListingId ===
+                                                                                    listing.id}
+                                                                                onClick={() =>
+                                                                                    handleRemoveBlackout(
+                                                                                        listing.id, blackout.id)}>
+                                                                                Remove
+                                                                            </button>
+                                                                        </li>
+                                                                    ))}
+                                                                    {(blackoutsByListingId[listing.id] ?? [])
+                                                                        .length === 0 && (
+                                                                        <li className="account-blackouts-empty">
+                                                                            No blackout dates yet.
+                                                                        </li>
+                                                                    )}
+                                                                </ul>
+                                                                <form
+                                                                    aria-label={`Add blackout to ${listing.title}`}
+                                                                    onSubmit={(event) =>
+                                                                        handleAddBlackout(event, listing.id)}
+                                                                >
+                                                                    <label className="auth-field">
+                                                                        <span>Start date</span>
+                                                                        <input name="startDate" type="date"
+                                                                            value={blackoutForm.startDate} required
+                                                                            onChange={handleBlackoutFormChange}/>
+                                                                    </label>
+                                                                    <label className="auth-field">
+                                                                        <span>End date</span>
+                                                                        <input name="endDate" type="date"
+                                                                            value={blackoutForm.endDate} required
+                                                                            onChange={handleBlackoutFormChange}/>
+                                                                    </label>
+                                                                    <label className="auth-field">
+                                                                        <span>Reason (optional)</span>
+                                                                        <input name="reason" type="text"
+                                                                            maxLength={255}
+                                                                            value={blackoutForm.reason}
+                                                                            onChange={handleBlackoutFormChange}/>
+                                                                    </label>
+                                                                    <button className="booking-link" type="submit"
+                                                                        disabled={workingBlackoutListingId ===
+                                                                            listing.id}>
+                                                                        {workingBlackoutListingId === listing.id
+                                                                            ? 'Adding…'
+                                                                            : 'Add blackout'}
+                                                                    </button>
+                                                                </form>
+                                                                {blackoutError && (
+                                                                    <p className="booking-validation" role="alert">
+                                                                        {blackoutError}
+                                                                    </p>
+                                                                )}
+                                                            </div>
+                                                        )}
                                                         {confirmDeactivateId === listing.id && (
                                                             <div className="account-deactivate-confirm">
                                                                 <p>This hides the listing from customers.</p>
