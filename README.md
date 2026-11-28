@@ -30,10 +30,11 @@ Full feature breakdown, prioritized with MoSCoW and mapped to requirement IDs fo
 | AUTH-01 | Registration and login | **Implemented** | Customer and supplier self-registration, secure password hashing, JWT login, duplicate-email and credential tests. Admin accounts are not self-registered. |
 | AUTH-02 | Role-based access control | **Implemented** | Customer, supplier, and admin roles are enforced on protected endpoints; account and ownership tests cover authorization. |
 | AUTH-03 | Password reset | **Planned** | The UI route exists, but it does not send reset email or change a password because no reset API or email provider is connected. |
-| LST-01 | Supplier listing management | **Partial** | Suppliers create, edit, and deactivate listings and view account activity. Listing fields and ownership are implemented; availability slots, photos, and private access instructions are not yet implemented. |
+| LST-01 | Supplier listing management | **Partial** | Suppliers create, edit, and deactivate listings and view account activity. Listing fields and ownership are implemented; photos and private access instructions are not yet implemented. |
+| BO-01 | Supplier blackout dates | **Implemented** | Suppliers mark UTC windows on their own listings as unavailable, separate from the booking lifecycle. A blackout is rejected if it overlaps an existing booking or another blackout (enforced with a database exclusion constraint and covered by concurrency tests), and it is folded into the public availability view alongside reserved booking windows. |
 | LST-02 | Browse and basic search | **Partial** | The backend provides keyword, category, and price search with pagination. The frontend provides additional client-side location filtering, category/price controls, and sorting. |
 | BK-01 | Booking with availability check | **Implemented** | Customers book open time ranges and overlapping requests are blocked by application checks, a database constraint, and concurrency tests. |
-| BK-02 | Booking state machine | **Partial** | Backend transitions cover pending → accepted → confirmed and cancellation; completed transition logic exists but there is no public completion endpoint yet. |
+| BK-02 | Booking state machine | **Implemented** | Backend transitions cover pending → accepted → confirmed → completed and cancellation, each via its own endpoint, with authorization rules for which party may make each move and tests covering every valid and invalid transition. |
 | BK-03 | Payment through a mocked Stripe layer | **Implemented** | Confirmation charges through an idempotent mock payment client. Live Stripe processing and webhook handling remain planned/excluded. |
 | BK-04 | Cancellation and refund calculation | **Implemented** | Cancellation stores a timing-based refund amount; unit tests cover refund and boundary behavior. |
 | BK-05 | Timezone-safe scheduling | **Implemented** | Booking timestamps use UTC and timezone and DST behavior is covered by backend tests. |
@@ -47,7 +48,7 @@ Full feature breakdown, prioritized with MoSCoW and mapped to requirement IDs fo
 | BK-06 | Dispute workflow | **Planned** | Adds the disputed state, with an admin resolution flow and a full audit trail. |
 | BK-07 | Webhook handling and retries | **Planned** | Handles a mock or real Stripe charge whose webhook times out; retries remain idempotent. |
 | BK-08 | Concurrent cancellation safety | **Partial** | Booking cancellation is persisted safely, but refund and concurrent-admin/supplier behavior needs further testing. |
-| ADM-02 | Reviews and ratings | **Planned** | Reviews are allowed only after a completed booking, one per booking, with timing validation. |
+| ADM-02 | Reviews and ratings | **Implemented** | A customer and the listing's supplier may each leave one review of the other after their shared booking reaches completed, enforced with a database unique constraint and covered by concurrency tests. A listing's aggregate rating and a customer's standing shown to a supplier both exclude that same supplier's own review, so neither party can pad their own reputation. |
 | ADM-03 | Moderation tools | **Planned** | Admins can hide listings and reviews. |
 | LST-03 | Advanced search | **Partial** | The frontend has sorting and basic filters; backend date-availability filtering and stale-index handling are not implemented. |
 | BK-09 | Discount rules and promo codes | **Planned** | Unit-testable pricing logic, including stacking rules. |
@@ -80,7 +81,9 @@ New requirements should receive a stable ID under the appropriate module, follow
 | Authentication | `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/auth/me` |
 | Account | `GET /api/account` |
 | Listings | `GET /api/listings`, `GET /api/listings/{id}`, `POST /api/listings`, `PUT /api/listings/{id}`, `POST /api/listings/{id}/deactivate` |
-| Bookings | `GET /api/bookings/availability/{listingId}`, `POST /api/bookings`, `PUT /api/bookings/{id}/accept`, `PUT /api/bookings/{id}/confirm`, `PUT /api/bookings/{id}/cancel` |
+| Listing blackouts | `GET /api/listings/{id}/blackouts`, `POST /api/listings/{id}/blackouts`, `DELETE /api/listings/{id}/blackouts/{blackoutId}` |
+| Bookings | `GET /api/bookings/availability/{listingId}`, `POST /api/bookings`, `PUT /api/bookings/{id}/accept`, `PUT /api/bookings/{id}/confirm`, `PUT /api/bookings/{id}/complete`, `PUT /api/bookings/{id}/cancel` |
+| Reviews | `GET /api/bookings/{id}/reviews`, `POST /api/bookings/{id}/reviews`, `GET /api/listings/{id}/reviews` |
 | Administration | `GET /api/admin/users`, `GET /api/admin/bookings` |
 
 Protected routes require `Authorization: Bearer <token>`. Listing search and detail routes are public.
