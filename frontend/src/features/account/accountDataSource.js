@@ -1,4 +1,4 @@
-import {getSession, signOut} from '../auth/authDataSource'
+import {getSession, rejectIfUnauthorized} from '../auth/authDataSource'
 
 async function listingRequest(listingId, method, path = '', listing) {
     const session = getSession()
@@ -19,14 +19,7 @@ async function listingRequest(listingId, method, path = '', listing) {
     })
     const payload = await response.json().catch(() => null)
 
-    if (response.status === 401) {
-        signOut()
-        const error = new Error(
-            'Your sign-in session expired or was rejected. Please sign in again.',
-        )
-        error.status = response.status
-        throw error
-    }
+    rejectIfUnauthorized(response)
     if (!response.ok) {
         throw new Error(payload?.detail ?? `Listing request failed (${response.status}).`)
     }
@@ -48,14 +41,7 @@ export async function getAccount() {
     })
     const payload = await response.json().catch(() => null)
 
-    if (response.status === 401) {
-        signOut()
-        const error = new Error(
-            'Your sign-in session expired or was rejected. Please sign in again.',
-        )
-        error.status = response.status
-        throw error
-    }
+    rejectIfUnauthorized(response)
     if (!response.ok) {
         const error = new Error(
             payload?.detail ?? `Account request failed (${response.status}).`,
@@ -82,18 +68,34 @@ export async function acceptBooking(bookingId) {
     })
     const payload = await response.json().catch(() => null)
 
-    if (response.status === 401) {
-        signOut()
-        const error = new Error(
-            'Your sign-in session expired or was rejected. Please sign in again.',
-        )
-        error.status = response.status
-        throw error
-    }
+    rejectIfUnauthorized(response)
     if (!response.ok) {
         throw new Error(payload?.detail ?? `Booking request failed (${response.status}).`)
     }
     if (Number(payload?.id) !== Number(bookingId) || payload?.status !== 'ACCEPTED') {
+        throw new Error('The booking response was not in the expected format.')
+    }
+
+    return payload
+}
+
+export async function completeBooking(bookingId) {
+    const session = getSession()
+    if (!session?.token || session.user.role !== 'SUPPLIER') {
+        throw new Error('Sign in with a supplier account to complete bookings.')
+    }
+
+    const response = await fetch(`/api/bookings/${bookingId}/complete`, {
+        method: 'PUT',
+        headers: {Authorization: `Bearer ${session.token}`},
+    })
+    const payload = await response.json().catch(() => null)
+
+    rejectIfUnauthorized(response)
+    if (!response.ok) {
+        throw new Error(payload?.detail ?? `Booking request failed (${response.status}).`)
+    }
+    if (Number(payload?.id) !== Number(bookingId) || payload?.status !== 'COMPLETED') {
         throw new Error('The booking response was not in the expected format.')
     }
 

@@ -13,6 +13,11 @@ function ListingCard({listing}) {
                     <Link to={`/listings/${listing.id}`}>{listing.title}</Link>
                 </h3>
                 <p className="listing-location">{listing.location}</p>
+                <p className="listing-rating">
+                    {listing.averageRating != null
+                        ? `★ ${listing.averageRating.toFixed(1)} (${listing.reviewCount} reviews)`
+                        : 'No reviews yet'}
+                </p>
                 <p className="listing-price">
                     <strong>${listing.price}</strong> / day
                 </p>

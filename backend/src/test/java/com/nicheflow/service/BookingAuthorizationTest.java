@@ -210,6 +210,23 @@ class BookingAuthorizationTest {
     }
 
     /**
+     * supplierCanCompleteTheirOwnConfirmedBooking - This function
+     * stores confirmed to completed through the complete() method
+     * used by the booking HTTP surface.
+     */
+    @Test
+    void supplierCanCompleteTheirOwnConfirmedBooking() {
+        Booking booking = load(BookingStatus.CONFIRMED);
+        stubSave();
+
+        Booking stored = bookingService.complete(supplierCaller,
+                BOOKING_ID);
+
+        assertThat(stored.getStatus()).isEqualTo(BookingStatus.COMPLETED);
+        verify(bookingRepository).save(booking);
+    }
+
+    /**
      * supplierCannotConfirm - This function refuses a listing supplier
      * who tries to confirm the customer's booking.
      */

@@ -1124,6 +1124,15 @@ h2 {
   cursor: not-allowed;
 }
 
+/* Booking actions (Accept booking / Mark complete / Review / See
+   reviews) occupy the same slot across a booking's lifecycle. A
+   fixed width keeps that slot from shifting position each time the
+   label changes length. */
+.booking-status-action {
+  min-width: 140px;
+  text-align: center;
+}
+
 .account-edit-form {
   width: 100%;
   display: grid;
@@ -1189,6 +1198,105 @@ h2 {
   color: #73756b;
 }
 
+.account-reviews-panel {
+  width: 100%;
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid #dfe4da;
+  border-radius: 12px;
+  background: #fbfcf8;
+}
+
+.account-reviews-panel form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.account-reviews-panel form .auth-field:last-of-type,
+.account-reviews-panel form .booking-link {
+  grid-column: 1 / -1;
+}
+
+.account-reviews-group {
+  display: grid;
+  gap: 8px;
+}
+
+.account-reviews-group h4 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: #466b51;
+  text-transform: uppercase;
+}
+
+.account-reviews-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.account-reviews-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.account-reviews-empty {
+  color: #73756b;
+}
+
+.account-reviews-own-badge {
+  margin-left: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #e6ede2;
+  color: #466b51;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.listing-rating {
+  font-size: 13px;
+  color: #73756b;
+}
+
+.listing-reviews-section {
+  width: min(100% - 36px, 920px);
+  margin: 24px auto 0;
+  display: grid;
+  gap: 14px;
+}
+
+.listing-reviews-list {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.listing-reviews-list li {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid #dfe4da;
+  border-radius: 12px;
+  background: #fbfcf8;
+}
+
+.listing-reviews-list li p {
+  margin: 0;
+  font-size: 14px;
+}
+
 @media (max-width: 600px) {
   .account-page {
     width: min(100% - 36px, 920px);
@@ -1232,6 +1340,20 @@ h2 {
   }
 
   .account-blackouts-list li {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .account-reviews-panel form {
+    grid-template-columns: 1fr;
+  }
+
+  .account-reviews-panel form .auth-field:last-of-type,
+  .account-reviews-panel form .booking-link {
+    grid-column: auto;
+  }
+
+  .account-reviews-list li {
     flex-direction: column;
     align-items: flex-start;
   }

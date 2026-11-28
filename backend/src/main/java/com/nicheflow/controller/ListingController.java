@@ -11,6 +11,7 @@
 package com.nicheflow.controller;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
@@ -116,7 +117,13 @@ public class ListingController {
         Page<Listing> result = listingService.search(keyword, category,
                 minPrice, maxPrice, page, size);
 
-        return ListingPageResponse.from(result);
+        // To attach each listing's ADM-02 average rating
+        List<Long> listingIds = result.getContent().stream()
+                .map(Listing::getId)
+                .toList();
+
+        return ListingPageResponse.from(result,
+                listingService.ratingSummaries(listingIds));
     }
 
     /**
@@ -131,7 +138,7 @@ public class ListingController {
      */
     @GetMapping("/{listingId}")
     public ListingResponse get(@PathVariable @Min(1) Long listingId) {
-        return ListingResponse.from(listingService.findActive(listingId));
+        return withRating(listingService.findActive(listingId));
     }
 
     /**
@@ -156,7 +163,7 @@ public class ListingController {
                 request.title(), request.category(), request.price(),
                 request.location(), request.description());
 
-        return ListingResponse.from(listing);
+        return withRating(listing);
     }
 
     /**
@@ -176,6 +183,22 @@ public class ListingController {
         // To hide the listing using the same JWT principal as /me
         Listing listing = listingService.deactivate(caller, listingId);
 
-        return ListingResponse.from(listing);
+        return withRating(listing);
+    }
+
+    /**
+     * withRating - This function attaches a listing's already-stored
+     * ADM-02 rating summary, if any, so a write endpoint's response
+     * matches what get() and search() report instead of resetting
+     * the rating to null/0.
+     *
+     * Parameters:
+     * listing - The listing to project
+     *
+     * Return - The public listing payload, with its rating summary
+     */
+    private ListingResponse withRating(Listing listing) {
+        return ListingResponse.from(listing,
+                listingService.ratingSummaries(List.of(listing.getId())));
     }
 }

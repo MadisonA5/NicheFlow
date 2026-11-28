@@ -3,6 +3,7 @@ import {Link} from 'react-router-dom'
 import {getSession} from '../auth/authDataSource'
 import {
     acceptBooking,
+    completeBooking,
     deactivateListing,
     getAccount,
     updateListing,
@@ -12,10 +13,13 @@ import {
     deleteBlackout,
     listBlackouts,
 } from '../listings/blackoutsDataSource'
+import {createReview, listReviewsForBooking} from '../reviews/reviewsDataSource'
 
 const categories = ['Workspace', 'Outdoor', 'Events', 'Services', 'Other']
 
 const emptyBlackoutForm = {startDate: '', endDate: '', reason: ''}
+
+const emptyReviewForm = {rating: '5', comment: ''}
 
 function formatDateTime(value) {
     return new Intl.DateTimeFormat(undefined, {
@@ -26,6 +30,67 @@ function formatDateTime(value) {
 
 function toUtcMidnight(date) {
     return `${date}T00:00:00Z`
+}
+
+function reviewsAboutCustomer(reviews, booking) {
+    return reviews.filter((review) => review.revieweeId === booking.customerId)
+}
+
+function reviewsAboutListing(reviews, booking) {
+    return reviews.filter((review) => review.revieweeId !== booking.customerId)
+}
+
+function ReviewGroup({heading, reviews, callerId}) {
+    return (
+        <div className="account-reviews-group">
+            <h4>{heading}</h4>
+            <ul className="account-reviews-list">
+                {reviews.map((review) => (
+                    <li key={review.id}>
+                        <span>
+                            {'★'.repeat(review.rating)}
+                            {'☆'.repeat(5 - review.rating)}
+                            {review.reviewerId === callerId && (
+                                <span className="account-reviews-own-badge">
+                                    Your review
+                                </span>
+                            )}
+                            {review.comment && (
+                                <span> — {review.comment}</span>
+                            )}
+                        </span>
+                    </li>
+                ))}
+                {reviews.length === 0 && (
+                    <li className="account-reviews-empty">No review yet.</li>
+                )}
+            </ul>
+        </div>
+    )
+}
+
+async function toggleExpandable({
+    id, expandedId, setExpandedId, cache, setCache, setError, onExpand, fetchFn,
+}) {
+    if (expandedId === id) {
+        setExpandedId(null)
+        return
+    }
+
+    setExpandedId(id)
+    setError('')
+    if (onExpand) onExpand()
+
+    if (cache[id]) {
+        return
+    }
+
+    try {
+        const result = await fetchFn(id)
+        setCache((current) => ({...current, [id]: result}))
+    } catch (error) {
+        setError(error.message)
+    }
 }
 
 function AccountPage() {
@@ -46,6 +111,11 @@ function AccountPage() {
     const [blackoutForm, setBlackoutForm] = useState(emptyBlackoutForm)
     const [blackoutError, setBlackoutError] = useState('')
     const [workingBlackoutListingId, setWorkingBlackoutListingId] = useState(null)
+    const [expandedReviewBookingId, setExpandedReviewBookingId] = useState(null)
+    const [reviewsByBookingId, setReviewsByBookingId] = useState({})
+    const [reviewFormByBookingId, setReviewFormByBookingId] = useState({})
+    const [reviewError, setReviewError] = useState('')
+    const [workingReviewBookingId, setWorkingReviewBookingId] = useState(null)
 
     useEffect(() => {
         let isCurrent = true
@@ -124,16 +194,16 @@ function AccountPage() {
         }
     }
 
-    async function handleAcceptBooking(bookingId) {
+    async function handleBookingTransition(bookingId, transitionFn) {
         setWorkingBookingId(bookingId)
         setBookingActionError('')
         try {
-            const accepted = await acceptBooking(bookingId)
+            const updated = await transitionFn(bookingId)
             setAccount((current) => ({
                 ...current,
                 bookings: current.bookings.map((booking) =>
                     booking.id === bookingId
-                        ? {...booking, status: accepted.status}
+                        ? {...booking, status: updated.status}
                         : booking),
             }))
         } catch (error) {
@@ -143,29 +213,17 @@ function AccountPage() {
         }
     }
 
-    async function toggleBlackouts(listing) {
-        if (expandedBlackoutsListingId === listing.id) {
-            setExpandedBlackoutsListingId(null)
-            return
-        }
-
-        setExpandedBlackoutsListingId(listing.id)
-        setBlackoutForm(emptyBlackoutForm)
-        setBlackoutError('')
-
-        if (blackoutsByListingId[listing.id]) {
-            return
-        }
-
-        try {
-            const blackouts = await listBlackouts(listing.id)
-            setBlackoutsByListingId((current) => ({
-                ...current,
-                [listing.id]: blackouts,
-            }))
-        } catch (error) {
-            setBlackoutError(error.message)
-        }
+    function toggleBlackouts(listing) {
+        return toggleExpandable({
+            id: listing.id,
+            expandedId: expandedBlackoutsListingId,
+            setExpandedId: setExpandedBlackoutsListingId,
+            cache: blackoutsByListingId,
+            setCache: setBlackoutsByListingId,
+            setError: setBlackoutError,
+            onExpand: () => setBlackoutForm(emptyBlackoutForm),
+            fetchFn: listBlackouts,
+        })
     }
 
     function handleBlackoutFormChange(event) {
@@ -209,6 +267,58 @@ function AccountPage() {
             setBlackoutError(error.message)
         } finally {
             setWorkingBlackoutListingId(null)
+        }
+    }
+
+    function toggleReview(booking) {
+        return toggleExpandable({
+            id: booking.id,
+            expandedId: expandedReviewBookingId,
+            setExpandedId: setExpandedReviewBookingId,
+            cache: reviewsByBookingId,
+            setCache: setReviewsByBookingId,
+            setError: setReviewError,
+            onExpand: () => setReviewFormByBookingId((current) => ({
+                ...current,
+                [booking.id]: current[booking.id] ?? emptyReviewForm,
+            })),
+            fetchFn: listReviewsForBooking,
+        })
+    }
+
+    function handleReviewFormChange(event, bookingId) {
+        const {name, value} = event.target
+        setReviewFormByBookingId((current) => ({
+            ...current,
+            [bookingId]: {...(current[bookingId] ?? emptyReviewForm), [name]: value},
+        }))
+    }
+
+    async function handleAddReview(event, bookingId) {
+        event.preventDefault()
+        setWorkingReviewBookingId(bookingId)
+        setReviewError('')
+        try {
+            const form = reviewFormByBookingId[bookingId] ?? emptyReviewForm
+            const created = await createReview(bookingId, {
+                rating: Number(form.rating),
+                comment: form.comment || null,
+            })
+            setReviewsByBookingId((current) => ({
+                ...current,
+                [bookingId]: [...(current[bookingId] ?? []), created],
+            }))
+            setAccount((current) => ({
+                ...current,
+                bookings: current.bookings.map((booking) =>
+                    booking.id === bookingId
+                        ? {...booking, reviewedByCaller: true}
+                        : booking),
+            }))
+        } catch (error) {
+            setReviewError(error.message)
+        } finally {
+            setWorkingReviewBookingId(null)
         }
     }
 
@@ -491,6 +601,14 @@ function AccountPage() {
                                                 {session.user.role === 'SUPPLIER' &&
                                                     ` · Customer #${booking.customerId}`}
                                             </p>
+                                            {session.user.role === 'SUPPLIER' && (
+                                                <p className="listing-rating">
+                                                    {booking.customerAverageRating != null
+                                                        ? `★ ${booking.customerAverageRating.toFixed(1)} `
+                                                            + `(${booking.customerReviewCount} reviews from other suppliers)`
+                                                        : 'No supplier reviews of this customer yet'}
+                                                </p>
+                                            )}
                                             <h3>{booking.listingTitle}</h3>
                                             <p>{booking.location} · ${booking.price} / day</p>
                                             <p>
@@ -498,23 +616,114 @@ function AccountPage() {
                                                 {formatDateTime(booking.endTime)}
                                             </p>
                                         </div>
-                                        <div className="account-listing-actions">
+                                        <div className="account-listing-controls">
+                                            <div className="account-listing-actions">
                                             <span className={`account-status ${booking.status.toLowerCase()}`}>
                                                 {booking.status.toLowerCase()}
                                             </span>
                                             {session.user.role === 'SUPPLIER' &&
                                                 booking.status === 'PENDING' && (
                                                     <button
-                                                        className="booking-link"
+                                                        className="account-action-button booking-status-action"
                                                         type="button"
                                                         disabled={workingBookingId === booking.id}
                                                         onClick={() =>
-                                                            handleAcceptBooking(booking.id)}>
+                                                            handleBookingTransition(
+                                                                booking.id, acceptBooking)}>
                                                         {workingBookingId === booking.id
                                                             ? 'Accepting…'
                                                             : 'Accept booking'}
                                                     </button>
                                                 )}
+                                            {session.user.role === 'SUPPLIER' &&
+                                                booking.status === 'CONFIRMED' && (
+                                                    <button
+                                                        className="account-action-button booking-status-action"
+                                                        type="button"
+                                                        disabled={workingBookingId === booking.id}
+                                                        onClick={() =>
+                                                            handleBookingTransition(
+                                                                booking.id, completeBooking)}>
+                                                        {workingBookingId === booking.id
+                                                            ? 'Completing…'
+                                                            : 'Mark complete'}
+                                                    </button>
+                                                )}
+                                            {booking.status === 'COMPLETED' && (
+                                                <button
+                                                    className="account-action-button booking-status-action"
+                                                    type="button"
+                                                    onClick={() => toggleReview(booking)}>
+                                                    {booking.reviewedByCaller
+                                                        ? 'See reviews'
+                                                        : 'Review'}
+                                                </button>
+                                            )}
+                                        </div>
+                                        {booking.status === 'COMPLETED' &&
+                                            expandedReviewBookingId === booking.id && (
+                                            <div className="account-reviews-panel">
+                                                <ReviewGroup
+                                                    heading="Review of the listing"
+                                                    reviews={reviewsAboutListing(
+                                                        reviewsByBookingId[booking.id] ?? [],
+                                                        booking)}
+                                                    callerId={session.user.id}
+                                                />
+                                                <ReviewGroup
+                                                    heading="Review of the customer"
+                                                    reviews={reviewsAboutCustomer(
+                                                        reviewsByBookingId[booking.id] ?? [],
+                                                        booking)}
+                                                    callerId={session.user.id}
+                                                />
+                                                {booking.reviewedByCaller ? (
+                                                    <p className="account-reviews-empty">
+                                                        You already reviewed this booking.
+                                                    </p>
+                                                ) : (
+                                                    <form
+                                                        aria-label={`Review booking ${booking.id}`}
+                                                        onSubmit={(event) =>
+                                                            handleAddReview(event, booking.id)}
+                                                    >
+                                                        <label className="auth-field">
+                                                            <span>Rating</span>
+                                                            <select name="rating"
+                                                                value={(reviewFormByBookingId[booking.id] ??
+                                                                    emptyReviewForm).rating}
+                                                                onChange={(event) =>
+                                                                    handleReviewFormChange(event, booking.id)}>
+                                                                {[5, 4, 3, 2, 1].map((value) => (
+                                                                    <option key={value} value={value}>
+                                                                        {value}
+                                                                    </option>
+                                                                ))}
+                                                            </select>
+                                                        </label>
+                                                        <label className="auth-field">
+                                                            <span>Comment (optional)</span>
+                                                            <input name="comment" type="text" maxLength={1000}
+                                                                value={(reviewFormByBookingId[booking.id] ??
+                                                                    emptyReviewForm).comment}
+                                                                onChange={(event) =>
+                                                                    handleReviewFormChange(event, booking.id)}/>
+                                                        </label>
+                                                        <button className="booking-link" type="submit"
+                                                            disabled={workingReviewBookingId === booking.id}>
+                                                            {workingReviewBookingId === booking.id
+                                                                ? 'Submitting…'
+                                                                : 'Leave a review'}
+                                                        </button>
+                                                    </form>
+                                                )}
+                                                {reviewError && (
+                                                    <p className="booking-validation" role="alert">
+                                                        {reviewError}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        )}
                                         </div>
                                     </article>
                                 ))}

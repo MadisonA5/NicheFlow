@@ -40,6 +40,8 @@ import com.nicheflow.model.Listing;
 import com.nicheflow.model.Role;
 import com.nicheflow.model.User;
 import com.nicheflow.repository.ListingRepository;
+import com.nicheflow.repository.ReviewRepository;
+import com.nicheflow.repository.ReviewRepository.ListingRatingSummary;
 import com.nicheflow.repository.UserRepository;
 import com.nicheflow.security.AuthenticatedUser;
 
@@ -64,6 +66,9 @@ class ListingServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private ReviewRepository reviewRepository;
 
     @InjectMocks
     private ListingService listingService;
@@ -365,5 +370,47 @@ class ListingServiceTest {
 
         assertThatThrownBy(() -> listingService.findActive(99L))
                 .isInstanceOf(ListingNotFoundException.class);
+    }
+
+    /**
+     * ratingSummariesAveragesAcrossReviewsForAListing - This function
+     * proves the summary map is keyed by listing id.
+     */
+    @Test
+    void ratingSummariesAveragesAcrossReviewsForAListing() {
+        ListingRatingSummary summary = new ListingRatingSummary() {
+            @Override
+            public Long getListingId() {
+                return 3L;
+            }
+
+            @Override
+            public Double getAverageRating() {
+                return 4.5;
+            }
+
+            @Override
+            public Long getReviewCount() {
+                return 2L;
+            }
+        };
+        given(reviewRepository.summarizeByListingIds(List.of(3L)))
+                .willReturn(List.of(summary));
+
+        assertThat(listingService.ratingSummaries(List.of(3L)))
+                .containsOnlyKeys(3L);
+        assertThat(listingService.ratingSummaries(List.of(3L)).get(3L)
+                .getAverageRating()).isEqualTo(4.5);
+    }
+
+    /**
+     * ratingSummariesSkipsTheQueryForNoListings - This function
+     * proves an empty id list never reaches the repository.
+     */
+    @Test
+    void ratingSummariesSkipsTheQueryForNoListings() {
+        assertThat(listingService.ratingSummaries(List.of())).isEmpty();
+
+        verify(reviewRepository, never()).summarizeByListingIds(any());
     }
 }

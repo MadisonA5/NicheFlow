@@ -168,6 +168,21 @@ public class SecurityConfig {
                         .hasRole("CUSTOMER")
                 .requestMatchers(HttpMethod.PUT, "/api/bookings/*/accept")
                         .hasRole("SUPPLIER")
+                // ADM-02 reviews gate on COMPLETED, so the supplier
+                // needs a way to reach it. Ownership is checked again
+                // in BookingService.
+                .requestMatchers(HttpMethod.PUT, "/api/bookings/*/complete")
+                        .hasRole("SUPPLIER")
+                // ADM-02 reviews. List is public, same posture as
+                // blackout list; create requires a logged-in party to
+                // this booking, enforced again in ReviewService.
+                .requestMatchers(HttpMethod.GET,
+                        "/api/bookings/*/reviews").permitAll()
+                .requestMatchers(HttpMethod.POST,
+                        "/api/bookings/*/reviews")
+                        .hasAnyRole("CUSTOMER", "SUPPLIER")
+                .requestMatchers(HttpMethod.GET,
+                        "/api/listings/*/reviews").permitAll()
                 // BK-04 cancel. The service decides which of these
                 // three parties may cancel this booking.
                 .requestMatchers(HttpMethod.PUT, "/api/bookings/*/cancel")

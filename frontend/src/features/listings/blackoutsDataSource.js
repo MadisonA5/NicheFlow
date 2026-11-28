@@ -1,4 +1,4 @@
-import {getSession, signOut} from '../auth/authDataSource'
+import {getSession, rejectIfUnauthorized} from '../auth/authDataSource'
 
 async function blackoutRequest(listingId, method, path = '', requireSupplier = false, body) {
     const session = getSession()
@@ -20,14 +20,7 @@ async function blackoutRequest(listingId, method, path = '', requireSupplier = f
             ...(body ? {body: JSON.stringify(body)} : {}),
         })
 
-    if (response.status === 401) {
-        signOut()
-        const error = new Error(
-            'Your sign-in session expired or was rejected. Please sign in again.',
-        )
-        error.status = response.status
-        throw error
-    }
+    rejectIfUnauthorized(response)
 
     const payload = response.status === 204
         ? null

@@ -482,6 +482,110 @@ describe('NicheFlow landing page', () => {
         })
     })
 
+    it('lets a supplier mark a confirmed booking complete from their account', async () => {
+        localStorage.setItem('nicheflow.session', JSON.stringify({
+            token: 'supplier.jwt.token',
+            user: {id: 7, email: 'maker@example.com', role: 'SUPPLIER'},
+        }))
+        const booking = {
+            id: 11,
+            customerId: 9,
+            listingTitle: 'Garden workspace',
+            location: 'Calgary, AB',
+            price: 38,
+            status: 'CONFIRMED',
+            startTime: '2026-11-01T00:00:00Z',
+            endTime: '2026-11-03T00:00:00Z',
+        }
+        const fetchMock = vi.fn((url) => Promise.resolve({
+            ok: true,
+            json: async () => {
+                if (url === '/api/bookings/11/complete') {
+                    return {id: 11, status: 'COMPLETED'}
+                }
+                if (url === '/api/account') {
+                    return {listings: [], bookings: [booking]}
+                }
+                return {items: []}
+            },
+        }))
+        vi.stubGlobal('fetch', fetchMock)
+        render(<App/>)
+
+        fireEvent.click(await screen.findByRole('link', {name: 'My account'}))
+        fireEvent.click(await screen.findByRole('button', {name: 'Mark complete'}))
+
+        expect(await screen.findByText('completed')).toBeInTheDocument()
+        expect(screen.queryByRole('button', {name: 'Mark complete'}))
+            .not.toBeInTheDocument()
+        expect(fetchMock).toHaveBeenCalledWith('/api/bookings/11/complete', {
+            method: 'PUT',
+            headers: {Authorization: 'Bearer supplier.jwt.token'},
+        })
+    })
+
+    it('shows a pending booking requester\'s standing with other suppliers', async () => {
+        localStorage.setItem('nicheflow.session', JSON.stringify({
+            token: 'supplier.jwt.token',
+            user: {id: 7, email: 'maker@example.com', role: 'SUPPLIER'},
+        }))
+        const booking = {
+            id: 11,
+            customerId: 9,
+            listingTitle: 'Garden workspace',
+            location: 'Calgary, AB',
+            price: 38,
+            status: 'PENDING',
+            startTime: '2026-11-01T00:00:00Z',
+            endTime: '2026-11-03T00:00:00Z',
+            customerAverageRating: 4.5,
+            customerReviewCount: 2,
+        }
+        vi.stubGlobal('fetch', vi.fn((url) => Promise.resolve({
+            ok: true,
+            json: async () => (url === '/api/account'
+                ? {listings: [], bookings: [booking]}
+                : {items: []}),
+        })))
+        render(<App/>)
+
+        fireEvent.click(await screen.findByRole('link', {name: 'My account'}))
+
+        expect(await screen.findByText('★ 4.5 (2 reviews from other suppliers)'))
+            .toBeInTheDocument()
+    })
+
+    it('shows no-reviews-yet standing for a first-time customer request', async () => {
+        localStorage.setItem('nicheflow.session', JSON.stringify({
+            token: 'supplier.jwt.token',
+            user: {id: 7, email: 'maker@example.com', role: 'SUPPLIER'},
+        }))
+        const booking = {
+            id: 11,
+            customerId: 9,
+            listingTitle: 'Garden workspace',
+            location: 'Calgary, AB',
+            price: 38,
+            status: 'PENDING',
+            startTime: '2026-11-01T00:00:00Z',
+            endTime: '2026-11-03T00:00:00Z',
+            customerAverageRating: null,
+            customerReviewCount: 0,
+        }
+        vi.stubGlobal('fetch', vi.fn((url) => Promise.resolve({
+            ok: true,
+            json: async () => (url === '/api/account'
+                ? {listings: [], bookings: [booking]}
+                : {items: []}),
+        })))
+        render(<App/>)
+
+        fireEvent.click(await screen.findByRole('link', {name: 'My account'}))
+
+        expect(await screen.findByText('No supplier reviews of this customer yet'))
+            .toBeInTheDocument()
+    })
+
     it('lets a supplier edit their listing from the account page', async () => {
         localStorage.setItem('nicheflow.session', JSON.stringify({
             token: 'supplier.jwt.token',
@@ -721,6 +825,280 @@ describe('NicheFlow landing page', () => {
         )
     })
 
+    it('lets a customer leave a review on a completed booking and see it appear', async () => {
+        localStorage.setItem('nicheflow.session', JSON.stringify({
+            token: 'customer.jwt.token',
+            user: {id: 9, email: 'bob@example.com', role: 'CUSTOMER'},
+        }))
+        const booking = {
+            id: 11,
+            listingTitle: 'Garden workspace',
+            location: 'Calgary, AB',
+            price: 38,
+            status: 'COMPLETED',
+            startTime: '2026-11-01T00:00:00Z',
+            endTime: '2026-11-03T00:00:00Z',
+        }
+        const created = {
+            id: 21,
+            bookingId: 11,
+            reviewerId: 9,
+            revieweeId: 7,
+            rating: 5,
+            comment: 'Great stay',
+            createdAt: '2026-11-04T00:00:00Z',
+        }
+        let reviews = []
+        const fetchMock = vi.fn((url, options) => {
+            if (url === '/api/bookings/11/reviews' && !options) {
+                return Promise.resolve({ok: true, json: async () => reviews})
+            }
+            if (url === '/api/bookings/11/reviews' && options?.method === 'POST') {
+                reviews = [created]
+                return Promise.resolve({ok: true, json: async () => created})
+            }
+            return Promise.resolve({
+                ok: true,
+                json: async () => (url === '/api/account'
+                    ? {listings: [], bookings: [booking]}
+                    : {items: []}),
+            })
+        })
+        vi.stubGlobal('fetch', fetchMock)
+        render(<App/>)
+
+        fireEvent.click(await screen.findByRole('link', {name: 'My account'}))
+        fireEvent.click(await screen.findByRole('button', {name: 'Review'}))
+        expect(await screen.findAllByText('No review yet.')).toHaveLength(2)
+
+        fireEvent.change(screen.getByRole('combobox', {name: 'Rating'}), {
+            target: {value: '5'},
+        })
+        fireEvent.change(screen.getByRole('textbox', {name: 'Comment (optional)'}), {
+            target: {value: 'Great stay'},
+        })
+        fireEvent.click(screen.getByRole('button', {name: 'Leave a review'}))
+
+        expect(await screen.findByText(/Great stay/)).toBeInTheDocument()
+        expect(await screen.findByText('Your review')).toBeInTheDocument()
+        expect(fetchMock).toHaveBeenCalledWith('/api/bookings/11/reviews', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: 'Bearer customer.jwt.token',
+            },
+            body: JSON.stringify({rating: 5, comment: 'Great stay'}),
+        })
+        expect(await screen.findByText('You already reviewed this booking.'))
+            .toBeInTheDocument()
+        expect(await screen.findByRole('button', {name: 'See reviews'}))
+            .toBeInTheDocument()
+    })
+
+    it('separates the listing review from the customer review on a completed booking', async () => {
+        localStorage.setItem('nicheflow.session', JSON.stringify({
+            token: 'customer.jwt.token',
+            user: {id: 9, email: 'bob@example.com', role: 'CUSTOMER'},
+        }))
+        const booking = {
+            id: 11,
+            customerId: 9,
+            listingTitle: 'Garden workspace',
+            location: 'Calgary, AB',
+            price: 38,
+            status: 'COMPLETED',
+            startTime: '2026-11-01T00:00:00Z',
+            endTime: '2026-11-03T00:00:00Z',
+            reviewedByCaller: true,
+        }
+        const reviewOfListing = {
+            id: 21,
+            bookingId: 11,
+            reviewerId: 9,
+            revieweeId: 7,
+            rating: 5,
+            comment: 'Great stay',
+            createdAt: '2026-11-04T00:00:00Z',
+        }
+        const reviewOfCustomer = {
+            id: 22,
+            bookingId: 11,
+            reviewerId: 7,
+            revieweeId: 9,
+            rating: 4,
+            comment: 'Easy guest',
+            createdAt: '2026-11-04T00:00:00Z',
+        }
+        vi.stubGlobal('fetch', vi.fn((url) => Promise.resolve({
+            ok: true,
+            json: async () => {
+                if (url === '/api/bookings/11/reviews') {
+                    return [reviewOfListing, reviewOfCustomer]
+                }
+                return url === '/api/account'
+                    ? {listings: [], bookings: [booking]}
+                    : {items: []}
+            },
+        })))
+        render(<App/>)
+
+        fireEvent.click(await screen.findByRole('link', {name: 'My account'}))
+        fireEvent.click(await screen.findByRole('button', {name: 'See reviews'}))
+
+        const listingHeading = await screen.findByRole('heading', {name: 'Review of the listing'})
+        const customerHeading = await screen.findByRole('heading', {name: 'Review of the customer'})
+
+        expect(listingHeading.nextElementSibling).toHaveTextContent('Great stay')
+        expect(listingHeading.nextElementSibling).not.toHaveTextContent('Easy guest')
+        expect(customerHeading.nextElementSibling).toHaveTextContent('Easy guest')
+        expect(customerHeading.nextElementSibling).not.toHaveTextContent('Great stay')
+    })
+
+    it('shows an error message when adding a review fails', async () => {
+        localStorage.setItem('nicheflow.session', JSON.stringify({
+            token: 'customer.jwt.token',
+            user: {id: 9, email: 'bob@example.com', role: 'CUSTOMER'},
+        }))
+        const booking = {
+            id: 11,
+            listingTitle: 'Garden workspace',
+            location: 'Calgary, AB',
+            price: 38,
+            status: 'COMPLETED',
+            startTime: '2026-11-01T00:00:00Z',
+            endTime: '2026-11-03T00:00:00Z',
+        }
+        const fetchMock = vi.fn((url, options) => {
+            if (url === '/api/bookings/11/reviews' && !options) {
+                return Promise.resolve({ok: true, json: async () => []})
+            }
+            if (url === '/api/bookings/11/reviews' && options?.method === 'POST') {
+                return Promise.resolve({
+                    ok: false,
+                    status: 400,
+                    json: async () => ({
+                        detail: 'Reviews are only allowed after a completed booking',
+                    }),
+                })
+            }
+            return Promise.resolve({
+                ok: true,
+                json: async () => (url === '/api/account'
+                    ? {listings: [], bookings: [booking]}
+                    : {items: []}),
+            })
+        })
+        vi.stubGlobal('fetch', fetchMock)
+        render(<App/>)
+
+        fireEvent.click(await screen.findByRole('link', {name: 'My account'}))
+        fireEvent.click(await screen.findByRole('button', {name: 'Review'}))
+        await screen.findAllByText('No review yet.')
+
+        fireEvent.click(screen.getByRole('button', {name: 'Leave a review'}))
+
+        expect(await screen.findByRole('alert')).toHaveTextContent(
+            'Reviews are only allowed after a completed booking',
+        )
+    })
+
+    it('shows "See reviews" on load for a booking the caller already reviewed, with no review fetch needed', async () => {
+        localStorage.setItem('nicheflow.session', JSON.stringify({
+            token: 'customer.jwt.token',
+            user: {id: 9, email: 'bob@example.com', role: 'CUSTOMER'},
+        }))
+        const booking = {
+            id: 11,
+            listingTitle: 'Garden workspace',
+            location: 'Calgary, AB',
+            price: 38,
+            status: 'COMPLETED',
+            startTime: '2026-11-01T00:00:00Z',
+            endTime: '2026-11-03T00:00:00Z',
+            reviewedByCaller: true,
+        }
+        const fetchMock = vi.fn((url) => Promise.resolve({
+            ok: true,
+            json: async () => (url === '/api/account'
+                ? {listings: [], bookings: [booking]}
+                : {items: []}),
+        }))
+        vi.stubGlobal('fetch', fetchMock)
+        render(<App/>)
+
+        fireEvent.click(await screen.findByRole('link', {name: 'My account'}))
+
+        expect(await screen.findByRole('button', {name: 'See reviews'}))
+            .toBeInTheDocument()
+        expect(screen.queryByRole('button', {name: 'Review'}))
+            .not.toBeInTheDocument()
+        expect(fetchMock).not.toHaveBeenCalledWith('/api/bookings/11/reviews')
+    })
+
+    it('never fetches per-booking reviews on account load, even with many completed bookings', async () => {
+        localStorage.setItem('nicheflow.session', JSON.stringify({
+            token: 'customer.jwt.token',
+            user: {id: 9, email: 'bob@example.com', role: 'CUSTOMER'},
+        }))
+        const bookings = Array.from({length: 5}, (_, index) => ({
+            id: index + 1,
+            listingTitle: `Listing ${index + 1}`,
+            location: 'Calgary, AB',
+            price: 38,
+            status: 'COMPLETED',
+            startTime: '2026-11-01T00:00:00Z',
+            endTime: '2026-11-03T00:00:00Z',
+            reviewedByCaller: index % 2 === 0,
+        }))
+        const fetchMock = vi.fn((url) => Promise.resolve({
+            ok: true,
+            json: async () => (url === '/api/account'
+                ? {listings: [], bookings}
+                : {items: []}),
+        }))
+        vi.stubGlobal('fetch', fetchMock)
+        render(<App/>)
+
+        fireEvent.click(await screen.findByRole('link', {name: 'My account'}))
+
+        expect(await screen.findAllByRole('article')).toHaveLength(5)
+        expect(fetchMock.mock.calls.some(([url]) =>
+            String(url).endsWith('/reviews'))).toBe(false)
+        expect(await screen.findAllByRole('button', {name: 'See reviews'}))
+            .toHaveLength(3)
+        expect(screen.getAllByRole('button', {name: 'Review'}))
+            .toHaveLength(2)
+    })
+
+    it('does not offer a review option for a booking that is not completed yet', async () => {
+        localStorage.setItem('nicheflow.session', JSON.stringify({
+            token: 'customer.jwt.token',
+            user: {id: 9, email: 'bob@example.com', role: 'CUSTOMER'},
+        }))
+        const booking = {
+            id: 11,
+            listingTitle: 'Garden workspace',
+            location: 'Calgary, AB',
+            price: 38,
+            status: 'CONFIRMED',
+            startTime: '2026-11-01T00:00:00Z',
+            endTime: '2026-11-03T00:00:00Z',
+        }
+        vi.stubGlobal('fetch', vi.fn((url) => Promise.resolve({
+            ok: true,
+            json: async () => (url === '/api/account'
+                ? {listings: [], bookings: [booking]}
+                : {items: []}),
+        })))
+        render(<App/>)
+
+        fireEvent.click(await screen.findByRole('link', {name: 'My account'}))
+
+        expect(await screen.findByText('Garden workspace')).toBeInTheDocument()
+        expect(screen.queryByRole('button', {name: 'Review'}))
+            .not.toBeInTheDocument()
+    })
+
     it('disables blackout dates for a deactivated listing', async () => {
         localStorage.setItem('nicheflow.session', JSON.stringify({
             token: 'supplier.jwt.token',
@@ -849,6 +1227,117 @@ describe('NicheFlow landing page', () => {
         expect(
             screen.getByText(/Sign in with a customer account to request this booking/),
         ).toBeInTheDocument()
+    })
+
+    it('shows other customers\' reviews on a listing detail page', async () => {
+        const review = {
+            id: 21,
+            bookingId: 11,
+            reviewerId: 9,
+            revieweeId: 1,
+            rating: 4,
+            comment: 'Lovely little garden spot',
+            createdAt: '2026-11-04T00:00:00Z',
+        }
+        vi.stubGlobal('fetch', vi.fn((url) => {
+            if (String(url).endsWith('/reviews')) {
+                return Promise.resolve({ok: true, json: async () => [review]})
+            }
+            return singleListingResponse(url) ?? Promise.resolve({
+                ok: true,
+                json: async () => ({
+                    items: listings.map(({
+                                             id,
+                                             title,
+                                             category,
+                                             price,
+                                             location,
+                                             description,
+                                         }) => ({
+                        id,
+                        title,
+                        category,
+                        price,
+                        location,
+                        description,
+                        supplierId: 1,
+                        active: true,
+                    })),
+                }),
+            })
+        }))
+        render(<App/>)
+
+        fireEvent.click(await screen.findByRole('link', {name: 'Sunny garden studio'}))
+
+        expect(
+            await screen.findByRole('heading', {name: 'What customers are saying'}),
+        ).toBeInTheDocument()
+        expect(await screen.findByText('Lovely little garden spot'))
+            .toBeInTheDocument()
+    })
+
+    it('marks the signed-in customer\'s own review on a listing detail page', async () => {
+        localStorage.setItem('nicheflow.session', JSON.stringify({
+            token: 'customer.jwt.token',
+            user: {id: 9, email: 'bob@example.com', role: 'CUSTOMER'},
+        }))
+        const ownReview = {
+            id: 21,
+            bookingId: 11,
+            reviewerId: 9,
+            revieweeId: 1,
+            rating: 4,
+            comment: 'Lovely little garden spot',
+            createdAt: '2026-11-04T00:00:00Z',
+        }
+        const otherReview = {
+            id: 22,
+            bookingId: 12,
+            reviewerId: 99,
+            revieweeId: 1,
+            rating: 5,
+            comment: 'Loved it too',
+            createdAt: '2026-11-05T00:00:00Z',
+        }
+        vi.stubGlobal('fetch', vi.fn((url) => {
+            if (String(url).endsWith('/reviews')) {
+                return Promise.resolve({
+                    ok: true,
+                    json: async () => [ownReview, otherReview],
+                })
+            }
+            return singleListingResponse(url) ?? Promise.resolve({
+                ok: true,
+                json: async () => ({
+                    items: listings.map(({
+                                             id,
+                                             title,
+                                             category,
+                                             price,
+                                             location,
+                                             description,
+                                         }) => ({
+                        id,
+                        title,
+                        category,
+                        price,
+                        location,
+                        description,
+                        supplierId: 1,
+                        active: true,
+                    })),
+                }),
+            })
+        }))
+        render(<App/>)
+
+        fireEvent.click(await screen.findByRole('link', {name: 'Sunny garden studio'}))
+        await screen.findByText('Loved it too')
+
+        const badges = await screen.findAllByText('Your review')
+        expect(badges).toHaveLength(1)
+        expect(badges[0].closest('li')).toHaveTextContent('Lovely little garden spot')
     })
 
     it('submits a booking request and displays the pending confirmation', async () => {
