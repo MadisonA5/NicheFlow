@@ -48,3 +48,16 @@ export function getSession() {
 export function signOut() {
     localStorage.removeItem(sessionKey)
 }
+
+export function rejectIfUnauthorized(response) {
+    if (response.status !== 401) {
+        return
+    }
+
+    signOut()
+    const error = new Error(
+        'Your sign-in session expired or was rejected. Please sign in again.',
+    )
+    error.status = response.status
+    throw error
+}

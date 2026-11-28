@@ -1,6 +1,7 @@
 import {afterEach, describe, expect, it, vi} from 'vitest'
 import {
     acceptBooking,
+    completeBooking,
     deactivateListing,
     getAccount,
     updateListing,
@@ -136,6 +137,37 @@ describe('account data source', () => {
         vi.stubGlobal('fetch', fetchMock)
 
         await expect(acceptBooking(11)).rejects.toThrow('supplier account')
+        expect(fetchMock).not.toHaveBeenCalled()
+    })
+
+    it('completes a booking using the supplier token', async () => {
+        localStorage.setItem('nicheflow.session', JSON.stringify({
+            token: 'supplier.jwt.token',
+            user: {id: 7, role: 'SUPPLIER'},
+        }))
+        const completed = {id: 11, status: 'COMPLETED'}
+        const fetchMock = vi.fn().mockResolvedValue({
+            ok: true,
+            json: async () => completed,
+        })
+        vi.stubGlobal('fetch', fetchMock)
+
+        await expect(completeBooking(11)).resolves.toEqual(completed)
+        expect(fetchMock).toHaveBeenCalledWith('/api/bookings/11/complete', {
+            method: 'PUT',
+            headers: {Authorization: 'Bearer supplier.jwt.token'},
+        })
+    })
+
+    it('does not send a complete request for a customer account', async () => {
+        localStorage.setItem('nicheflow.session', JSON.stringify({
+            token: 'customer.jwt.token',
+            user: {id: 9, role: 'CUSTOMER'},
+        }))
+        const fetchMock = vi.fn()
+        vi.stubGlobal('fetch', fetchMock)
+
+        await expect(completeBooking(11)).rejects.toThrow('supplier account')
         expect(fetchMock).not.toHaveBeenCalled()
     })
 })

@@ -130,6 +130,26 @@ public class BookingController {
     }
 
     /**
+     * complete - This function marks a confirmed booking completed
+     * for a listing owned by the supplier caller.
+     *
+     * Parameters:
+     * caller - The identity parsed out of a valid JWT
+     * bookingId - The confirmed booking to complete; must be 1 or
+     *     greater
+     *
+     * Return - The booking now stored as completed
+     */
+    @PutMapping("/{bookingId}/complete")
+    public BookingResponse complete(
+            @AuthenticationPrincipal AuthenticatedUser caller,
+            @PathVariable @Min(1) Long bookingId) {
+        Booking booking = bookingService.complete(caller, bookingId);
+
+        return BookingResponse.from(booking);
+    }
+
+    /**
      * cancel - This function cancels a booking the caller is allowed
      * to cancel and returns the stored refund.
      *

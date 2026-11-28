@@ -250,6 +250,54 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * handleInvalidReview - This function maps a bad rating or a
+     * review attempted before a booking is completed to HTTP 400.
+     *
+     * Parameters:
+     * exception - The rejected review create
+     *
+     * Return - A bad-request problem detail
+     */
+    @ExceptionHandler(InvalidReviewException.class)
+    public ProblemDetail handleInvalidReview(
+            InvalidReviewException exception) {
+        return problem(HttpStatus.BAD_REQUEST, "Invalid review",
+                exception.getMessage());
+    }
+
+    /**
+     * handleReviewAccessDenied - This function maps a review attempt
+     * from a caller who is not a party on the booking to HTTP 403.
+     *
+     * Parameters:
+     * exception - The denied review create
+     *
+     * Return - A forbidden problem detail
+     */
+    @ExceptionHandler(ReviewAccessDeniedException.class)
+    public ProblemDetail handleReviewAccessDenied(
+            ReviewAccessDeniedException exception) {
+        return problem(HttpStatus.FORBIDDEN, "Review access denied",
+                exception.getMessage());
+    }
+
+    /**
+     * handleReviewConflict - This function maps a second review from
+     * the same reviewer on the same booking to HTTP 409.
+     *
+     * Parameters:
+     * exception - The duplicate-review error from review create
+     *
+     * Return - A conflict problem detail
+     */
+    @ExceptionHandler(ReviewConflictException.class)
+    public ProblemDetail handleReviewConflict(
+            ReviewConflictException exception) {
+        return problem(HttpStatus.CONFLICT, "Review conflict",
+                exception.getMessage());
+    }
+
+    /**
      * handleInvalidSearch - This function maps a bad LST-02 price
      * range or page request to HTTP 400.
      *

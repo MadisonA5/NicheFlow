@@ -235,6 +235,21 @@ public class BookingService {
     }
 
     /**
+     * complete - This function marks a confirmed booking completed for
+     * the supplier who owns its listing.
+     *
+     * Parameters:
+     * caller - The AuthenticatedUser from the security context
+     * bookingId - The confirmed booking to complete
+     *
+     * Return - The booking stored as completed
+     */
+    @Transactional
+    public Booking complete(AuthenticatedUser caller, Long bookingId) {
+        return transition(caller, bookingId, BookingStatus.COMPLETED);
+    }
+
+    /**
      * confirm - This function charges the listing price, then moves
      * the caller's own pending or accepted booking to confirmed. The
      * idempotency key is stable so a retry does not charge again.
@@ -356,11 +371,11 @@ public class BookingService {
     private boolean callerMayTransition(AuthenticatedUser caller,
             Booking booking, BookingStatus next) {
         if (next == BookingStatus.CONFIRMED) {
-            return isBookingCustomer(caller, booking);
+            return BookingParties.isCustomer(caller, booking);
         }
 
         if (next == BookingStatus.ACCEPTED) {
-            return isListingSupplier(caller, booking);
+            return BookingParties.isSupplier(caller, booking);
         }
 
         if (next == BookingStatus.CANCELLED) {
@@ -368,7 +383,7 @@ public class BookingService {
         }
 
         if (next == BookingStatus.COMPLETED) {
-            return isListingSupplier(caller, booking);
+            return BookingParties.isSupplier(caller, booking);
         }
 
         return false;
@@ -386,47 +401,17 @@ public class BookingService {
      */
     private boolean callerMayCancel(AuthenticatedUser caller,
             Booking booking) {
-        if (isBookingCustomer(caller, booking)) {
+        if (BookingParties.isCustomer(caller, booking)) {
             return true;
         }
 
-        if (isListingSupplier(caller, booking)) {
+        if (BookingParties.isSupplier(caller, booking)) {
             return true;
         }
 
         return caller.role() == Role.ADMIN;
     }
 
-    /**
-     * isBookingCustomer - This function compares the JWT id to the
-     * customer stored on the booking.
-     *
-     * Parameters:
-     * caller - The AuthenticatedUser from the security context
-     * booking - The booking being moved
-     *
-     * Return - True when the caller is that customer
-     */
-    private boolean isBookingCustomer(AuthenticatedUser caller,
-            Booking booking) {
-        return caller.id().equals(booking.getCustomer().getId());
-    }
-
-    /**
-     * isListingSupplier - This function compares the JWT id to the
-     * supplier who owns the booked listing.
-     *
-     * Parameters:
-     * caller - The AuthenticatedUser from the security context
-     * booking - The booking being moved
-     *
-     * Return - True when the caller owns that listing
-     */
-    private boolean isListingSupplier(AuthenticatedUser caller,
-            Booking booking) {
-        Long supplierId = booking.getListing().getSupplier().getId();
-        return caller.id().equals(supplierId);
-    }
 
     /**
      * rejectIllegalTransition - This function throws when next is not

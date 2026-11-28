@@ -12,6 +12,7 @@ package com.nicheflow.controller;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 import static org.mockito.ArgumentMatchers.any;
@@ -45,6 +46,7 @@ import com.nicheflow.exception.ListingNotFoundException;
 import com.nicheflow.model.Listing;
 import com.nicheflow.model.Role;
 import com.nicheflow.model.User;
+import com.nicheflow.repository.ReviewRepository.ListingRatingSummary;
 import com.nicheflow.security.AuthenticatedUser;
 import com.nicheflow.service.JwtService;
 import com.nicheflow.service.ListingService;
@@ -214,6 +216,32 @@ class ListingControllerTest {
     }
 
     /**
+     * updateKeepsTheListingsExistingRatingSummary - This function
+     * proves an edit does not reset a listing's ADM-02 rating to
+     * null/0 just because update() builds its own response.
+     */
+    @Test
+    void updateKeepsTheListingsExistingRatingSummary() throws Exception {
+        AuthenticatedUser caller = supplier(7L, "good-token");
+        User owner = TestUsers.withId(7L, "ada@example.com",
+                "$2a$10$hashed", Role.SUPPLIER);
+        Listing updated = TestListings.withId(3L, "New kayak", "SPORTS",
+                new BigDecimal("25.00"), owner);
+        given(listingService.update(eq(caller), eq(3L), any(), any(),
+                any(), any(), any())).willReturn(updated);
+        given(listingService.ratingSummaries(List.of(3L)))
+                .willReturn(Map.of(3L, ratingSummary(3L, 4.5, 2L)));
+
+        mockMvc.perform(put("/api/listings/3")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer good-token")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(CREATE_BODY))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.averageRating").value(4.5))
+                .andExpect(jsonPath("$.reviewCount").value(2));
+    }
+
+    /**
      * deactivatePassesTheJwtPrincipalAndReturnsActiveFalse - This
      * function checks deactivate uses the same principal and does
      * not hard-delete.
@@ -236,6 +264,31 @@ class ListingControllerTest {
                 .andExpect(jsonPath("$.id").value(3));
 
         verify(listingService).deactivate(caller, 3L);
+    }
+
+    /**
+     * deactivateKeepsTheListingsExistingRatingSummary - This
+     * function proves hiding a listing does not reset its ADM-02
+     * rating to null/0.
+     */
+    @Test
+    void deactivateKeepsTheListingsExistingRatingSummary()
+            throws Exception {
+        AuthenticatedUser caller = supplier(7L, "good-token");
+        User owner = TestUsers.withId(7L, "ada@example.com",
+                "$2a$10$hashed", Role.SUPPLIER);
+        Listing hidden = TestListings.withId(3L, "Kayak", "SPORTS",
+                new BigDecimal("25.00"), owner);
+        hidden.setActive(false);
+        given(listingService.deactivate(caller, 3L)).willReturn(hidden);
+        given(listingService.ratingSummaries(List.of(3L)))
+                .willReturn(Map.of(3L, ratingSummary(3L, 4.5, 2L)));
+
+        mockMvc.perform(post("/api/listings/3/deactivate")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer good-token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.averageRating").value(4.5))
+                .andExpect(jsonPath("$.reviewCount").value(2));
     }
 
     /**
@@ -695,6 +748,79 @@ class ListingControllerTest {
                 .andExpect(jsonPath("$.id").value(21))
                 .andExpect(jsonPath("$.title").value("Kayak"))
                 .andExpect(jsonPath("$.supplierId").value(7));
+    }
+
+    /**
+     * getAttachesTheListingsRatingSummaryWhenOneExists - This
+     * function proves ADM-02 averageRating and reviewCount are
+     * copied onto the payload when the listing has reviews.
+     */
+    @Test
+    void getAttachesTheListingsRatingSummaryWhenOneExists()
+            throws Exception {
+        User owner = TestUsers.withId(7L, "ada@example.com",
+                "$2a$10$hashed", Role.SUPPLIER);
+        Listing stored = TestListings.withId(21L, "Kayak", "SPORTS",
+                new BigDecimal("25.00"), owner);
+        given(listingService.findActive(21L)).willReturn(stored);
+        given(listingService.ratingSummaries(List.of(21L)))
+                .willReturn(Map.of(21L, ratingSummary(21L, 4.5, 2L)));
+
+        mockMvc.perform(get("/api/listings/21"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.averageRating").value(4.5))
+                .andExpect(jsonPath("$.reviewCount").value(2));
+    }
+
+    /**
+     * getLeavesTheRatingFieldsNullWhenThereAreNoReviews - This
+     * function proves a listing with no rating summary reports a
+     * null average and a zero count, not an error.
+     */
+    @Test
+    void getLeavesTheRatingFieldsNullWhenThereAreNoReviews()
+            throws Exception {
+        User owner = TestUsers.withId(7L, "ada@example.com",
+                "$2a$10$hashed", Role.SUPPLIER);
+        Listing stored = TestListings.withId(21L, "Kayak", "SPORTS",
+                new BigDecimal("25.00"), owner);
+        given(listingService.findActive(21L)).willReturn(stored);
+
+        mockMvc.perform(get("/api/listings/21"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.averageRating").doesNotExist())
+                .andExpect(jsonPath("$.reviewCount").value(0));
+    }
+
+    /**
+     * ratingSummary - This function builds a stub projection without
+     * needing a real JPQL GROUP BY result.
+     *
+     * Parameters:
+     * listingId - The summarized listing's id
+     * averageRating - The mean rating to report
+     * reviewCount - The review count to report
+     *
+     * Return - The stub summary
+     */
+    private static ListingRatingSummary ratingSummary(long listingId,
+            double averageRating, long reviewCount) {
+        return new ListingRatingSummary() {
+            @Override
+            public Long getListingId() {
+                return listingId;
+            }
+
+            @Override
+            public Double getAverageRating() {
+                return averageRating;
+            }
+
+            @Override
+            public Long getReviewCount() {
+                return reviewCount;
+            }
+        };
     }
 
     /**

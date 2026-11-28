@@ -10,6 +10,10 @@
 package com.nicheflow.service;
 
 import java.math.BigDecimal;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -25,6 +29,8 @@ import com.nicheflow.model.Listing;
 import com.nicheflow.model.Role;
 import com.nicheflow.model.User;
 import com.nicheflow.repository.ListingRepository;
+import com.nicheflow.repository.ReviewRepository;
+import com.nicheflow.repository.ReviewRepository.ListingRatingSummary;
 import com.nicheflow.repository.UserRepository;
 import com.nicheflow.security.AuthenticatedUser;
 
@@ -37,20 +43,26 @@ public class ListingService {
 
     private final ListingRepository listingRepository;
     private final UserRepository userRepository;
+    private final ReviewRepository reviewRepository;
 
     /**
      * ListingService - This function stores the listing and user
      * repositories Spring injects so create can attach a real User
-     * row as the supplier.
+     * row as the supplier, plus the review repository so search and
+     * get can attach each listing's ADM-02 rating summary.
      *
      * Parameters:
      * listingRepository - The listings table access point
      * userRepository - The users table access point
+     * reviewRepository - The reviews table access point, used to
+     *     summarize a listing's average rating and review count
      */
     public ListingService(ListingRepository listingRepository,
-            UserRepository userRepository) {
+            UserRepository userRepository,
+            ReviewRepository reviewRepository) {
         this.listingRepository = listingRepository;
         this.userRepository = userRepository;
+        this.reviewRepository = reviewRepository;
     }
 
     /**
@@ -192,6 +204,31 @@ public class ListingService {
                 minPrice == null ? BigDecimal.ZERO : minPrice,
                 maxPrice != null,
                 maxPrice == null ? BigDecimal.ZERO : maxPrice, pageable);
+    }
+
+    /**
+     * ratingSummaries - This function returns the ADM-02 average
+     * rating and review count for every listing in the given ids
+     * that has at least one review, keyed by listing id.
+     *
+     * Parameters:
+     * listingIds - The listings to summarize
+     *
+     * Return - A map from listing id to its rating summary; a
+     *     listing with no reviews has no entry
+     */
+    @Transactional(readOnly = true)
+    public Map<Long, ListingRatingSummary> ratingSummaries(
+            List<Long> listingIds) {
+        if (listingIds.isEmpty()) {
+            return Map.of();
+        }
+
+        return reviewRepository.summarizeByListingIds(listingIds)
+                .stream()
+                .collect(Collectors.toMap(
+                        ListingRatingSummary::getListingId,
+                        Function.identity()));
     }
 
     /**

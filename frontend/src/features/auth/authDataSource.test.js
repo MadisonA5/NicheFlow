@@ -1,5 +1,11 @@
 import {afterEach, describe, expect, it, vi} from 'vitest'
-import {getSession, signIn, signOut, signUp} from './authDataSource'
+import {
+    getSession,
+    rejectIfUnauthorized,
+    signIn,
+    signOut,
+    signUp,
+} from './authDataSource'
 
 describe('authentication data source', () => {
     afterEach(() => {
@@ -109,5 +115,30 @@ describe('authentication data source', () => {
         signOut()
 
         expect(getSession()).toBeNull()
+    })
+
+    it('clears the session and throws a session-expired error on 401', () => {
+        localStorage.setItem('nicheflow.session', JSON.stringify({
+            token: 'jwt.token',
+            user: {id: 2, email: 'person@example.com', role: 'CUSTOMER'},
+        }))
+
+        expect(() => rejectIfUnauthorized({status: 401})).toThrowError(
+            expect.objectContaining({
+                message: 'Your sign-in session expired or was rejected. Please sign in again.',
+                status: 401,
+            }),
+        )
+        expect(getSession()).toBeNull()
+    })
+
+    it('does nothing for a non-401 response', () => {
+        localStorage.setItem('nicheflow.session', JSON.stringify({
+            token: 'jwt.token',
+            user: {id: 2, email: 'person@example.com', role: 'CUSTOMER'},
+        }))
+
+        expect(() => rejectIfUnauthorized({status: 200})).not.toThrow()
+        expect(getSession()).not.toBeNull()
     })
 })
