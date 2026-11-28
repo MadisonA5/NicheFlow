@@ -1388,9 +1388,30 @@ describe('NicheFlow landing page', () => {
         const formatDate = (date) =>
             `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 
-        fireEvent.click(await screen.findByRole('button', {
+        // The calendar opens on the current month; advance to whatever
+        // month each date falls in, so this test keeps passing across a
+        // real month boundary instead of only when "today + 3 days"
+        // happens to stay inside the same month. Wait for the calendar
+        // to finish loading availability before navigating, since its
+        // days don't exist yet while "Checking availability…" shows.
+        const today = new Date()
+        const monthsToTomorrow =
+            (tomorrow.getFullYear() - today.getFullYear()) * 12 +
+            (tomorrow.getMonth() - today.getMonth())
+        await screen.findAllByRole('button', {name: /^\d{4}-\d{2}-\d{2}/})
+        for (let month = 0; month < monthsToTomorrow; month += 1) {
+            fireEvent.click(screen.getByRole('button', {name: 'Next month'}))
+        }
+        fireEvent.click(screen.getByRole('button', {
             name: formatDate(tomorrow),
         }))
+
+        const monthsToCheckout =
+            (checkout.getFullYear() - tomorrow.getFullYear()) * 12 +
+            (checkout.getMonth() - tomorrow.getMonth())
+        for (let month = 0; month < monthsToCheckout; month += 1) {
+            fireEvent.click(screen.getByRole('button', {name: 'Next month'}))
+        }
         fireEvent.click(screen.getByRole('button', {
             name: formatDate(checkout),
         }))
@@ -1442,10 +1463,32 @@ describe('NicheFlow landing page', () => {
         fireEvent.click(await screen.findByRole('link', {name: 'Sunny garden studio'}))
         fireEvent.click(await screen.findByRole('link', {name: 'Check dates'}))
 
-        const unavailableDay = await screen.findByRole('button', {
+        // The calendar opens on the current month; advance to whatever
+        // month each date falls in, so this test keeps passing across a
+        // real month boundary instead of only when "today + 3 days"
+        // happens to stay inside the same month. Wait for the calendar
+        // to finish loading availability before navigating, since its
+        // days don't exist yet while "Checking availability…" shows.
+        const today = new Date()
+        const monthsToTomorrow =
+            (tomorrow.getFullYear() - today.getFullYear()) * 12 +
+            (tomorrow.getMonth() - today.getMonth())
+        await screen.findAllByRole('button', {name: /^\d{4}-\d{2}-\d{2}/})
+        for (let month = 0; month < monthsToTomorrow; month += 1) {
+            fireEvent.click(screen.getByRole('button', {name: 'Next month'}))
+        }
+
+        const unavailableDay = screen.getByRole('button', {
             name: `${formatDate(tomorrow)}, unavailable`,
         })
         expect(unavailableDay).toBeDisabled()
+
+        const monthsToBoundary =
+            (checkoutBoundary.getFullYear() - tomorrow.getFullYear()) * 12 +
+            (checkoutBoundary.getMonth() - tomorrow.getMonth())
+        for (let month = 0; month < monthsToBoundary; month += 1) {
+            fireEvent.click(screen.getByRole('button', {name: 'Next month'}))
+        }
 
         const boundaryDay = screen.getByRole('button', {
             name: formatDate(checkoutBoundary),
